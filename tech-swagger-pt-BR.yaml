@@ -1,0 +1,3690 @@
+openapi: 3.0.3
+info:
+  title: API de Integração Topcon Tech
+  version: 1.0.0
+  description: |
+    A **API de Integração Topcon Tech** fornece endpoints para gerenciamento de recursos de tecnologia de concreto, incluindo insumos, fornecedores, centrais de dosagem, receitas de concreto e entidades relacionadas. Esta API é projetada para integração sistema-a-sistema, permitindo que sistemas ERP e de gestão externos sincronizem dados mestres com a plataforma Topcon Suite.
+
+    A autenticação é realizada via **tokens Bearer JWT** (single-tenant) ou **chaves de assinatura da API** (multi-tenant). Todas as respostas seguem um envelope padrão com os campos `status`, `message`, `result` e `errorCode` (opcional).
+  contact:
+    name: Suporte Topcon Suite
+    url: https://topconsuite.io
+servers:
+  - url: https://api.topconsuite.io/tech-hml
+    description: Ambiente Beta (HML) multi-tenant
+  - url: https://{client}-api.topconsuite.app/tech
+    description: Ambiente single-tenant do cliente
+    variables:
+      client:
+        default: demo
+        description: Prefixo de subdomínio específico do cliente
+
+tags:
+  - name: Authentication
+    description: Geração e gerenciamento de tokens para ambientes single-tenant
+    x-displayName: Autenticação
+  - name: ClassificationSupplyTypes
+    description: Gerenciar tipos de classificação utilizados para categorizar insumos por grupo de material
+    x-displayName: Tipos de Classificação de Insumo
+  - name: ConcreteBatchingPlants
+    description: Gerenciar o cadastro de centrais de dosagem de concreto
+    x-displayName: Centrais de Dosagem
+  - name: ConcreteRecipeFamilies
+    description: Consultar e atualizar registros de famílias de receita de concreto
+    x-displayName: Famílias de Receita de Concreto
+  - name: ConcreteRecipeFamilyVersions
+    description: Consultar dados de versões de famílias de receita de concreto, incluindo características e detalhes de insumos
+    x-displayName: Versões de Família de Receita de Concreto
+  - name: ConcreteRecipes
+    description: Consultar e atualizar registros de receitas de concreto
+    x-displayName: Receitas de Concreto
+  - name: CostSupplies
+    description: Gerenciar registros de custo de insumos, incluindo preço, frete e fatores de conversão
+    x-displayName: Custos de Insumo
+  - name: IdentificationDocumentTypes
+    description: Consultar tipos de documentos de identificação como CPF e CNPJ
+    x-displayName: Tipos de Documento de Identificação
+  - name: MeasureUnitTypes
+    description: Gerenciar tipos de unidades de medida utilizadas na plataforma
+    x-displayName: Tipos de Unidade de Medida
+  - name: Suppliers
+    description: Gerenciar o cadastro de fornecedores com identificação documental
+    x-displayName: Fornecedores
+  - name: Supplies
+    description: Gerenciar o cadastro de insumos (materiais) utilizados na produção de concreto
+    x-displayName: Insumos
+  - name: TechnicalDataSupplies
+    description: Gerenciar dados técnicos de insumos, incluindo massa específica e massa unitária por central de dosagem
+    x-displayName: Dados Técnicos de Insumo
+
+x-tagGroups:
+  - name: Autenticação
+    tags:
+      - Authentication
+  - name: Recursos Principais
+    tags:
+      - Supplies
+      - Suppliers
+      - CostSupplies
+      - TechnicalDataSupplies
+  - name: Classificação e Unidades
+    tags:
+      - ClassificationSupplyTypes
+      - MeasureUnitTypes
+      - IdentificationDocumentTypes
+  - name: Produção de Concreto
+    tags:
+      - ConcreteBatchingPlants
+      - ConcreteRecipeFamilies
+      - ConcreteRecipeFamilyVersions
+      - ConcreteRecipes
+
+security:
+  - BearerAuth: []
+  - SubscriptionKey: []
+
+paths:
+  # ── Autenticação ──
+  /integrationtokens/integration:
+    post:
+      tags: [Authentication]
+      summary: Gerar um novo token de integração
+      description: |
+        Gera um novo token Bearer para autenticação na API em ambientes **single-tenant**.
+        Apenas usuários administradores podem gerar tokens de integração públicos. Para ambientes multi-tenant,
+        utilize o cabeçalho `Ocp-Apim-Subscription-Key`.
+      operationId: generateToken
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenRequest'
+            example:
+              email: admin@company.com
+              password: securePassword123
+      responses:
+        '200':
+          description: Token gerado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+              example:
+                status: success
+                message: Token gerado com sucesso
+                result:
+                  token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+      x-codeSamples:
+        - lang: curl
+          source: |
+            curl -X POST https://api.topconsuite.io/tech-hml/integrationtokens/integration \
+              -H "Content-Type: application/json" \
+              -d '{"email":"admin@company.com","password":"securePassword123"}'
+        - lang: javascript
+          source: |
+            const response = await fetch('https://api.topconsuite.io/tech-hml/integrationtokens/integration', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                email: 'admin@company.com',
+                password: 'securePassword123'
+              })
+            });
+
+            const data = await response.json();
+        - lang: csharp
+          source: |
+            using System.Net.Http;
+            using System.Net.Http.Json;
+
+            using var httpClient = new HttpClient();
+
+            var response = await httpClient.PostAsJsonAsync(
+                "https://api.topconsuite.io/tech-hml/integrationtokens/integration",
+                new
+                {
+                    email = "admin@company.com",
+                    password = "securePassword123"
+                });
+
+            var payload = await response.Content.ReadAsStringAsync();
+        - lang: python
+          source: |
+            import requests
+
+            response = requests.post(
+                'https://api.topconsuite.io/tech-hml/integrationtokens/integration',
+                json={
+                    'email': 'admin@company.com',
+                    'password': 'securePassword123'
+                }
+            )
+
+            data = response.json()
+
+  /integrationtokens/integration/{token}:
+    patch:
+      tags: [Authentication]
+      summary: Revogar ou ativar um token existente
+      description: |
+        Atualiza o status de um token de integração existente. Defina `active` como **false** para revogar
+        ou **true** para reativar. A requisição deve incluir as credenciais do usuário que
+        criou o token originalmente.
+      operationId: updateToken
+      security: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          description: String do token a ser revogado ou ativado
+          schema:
+            type: string
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenUpdateRequest'
+            example:
+              email: admin@company.com
+              password: securePassword123
+              active: false
+      responses:
+        '200':
+          description: Status do token atualizado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BaseResponse'
+              example:
+                status: success
+                message: Token revogado com sucesso
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ── Tipos de Classificação de Insumo ──
+  /integrations/classificationsupplytypes:
+    post:
+      tags: [ClassificationSupplyTypes]
+      summary: Criar um novo tipo de classificação de insumo
+      description: |
+        Cria um único tipo de classificação de insumo. O campo `externalId` deve ser único
+        entre todos os tipos de classificação e é utilizado para vincular registros entre sistemas externos.
+      operationId: createClassificationSupplyType
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClassificationSupplyTypeInput'
+            example:
+              name: Cimento Portland CP-V
+              group: BINDER
+              externalId: EXT-CST-001
+              active: true
+      responses:
+        '201':
+          description: Tipo de classificação de insumo criado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClassificationSupplyTypeResponse'
+              example:
+                status: success
+                message: Registro criado com sucesso
+                result:
+                  id: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  name: Cimento Portland CP-V
+                  group: BINDER
+                  active: true
+                  externalId: EXT-CST-001
+                  createdAt: "2025-01-15T10:30:00"
+                  updatedAt: "2025-01-15T10:30:00"
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      x-codeSamples:
+        - lang: curl
+          source: |
+            curl -X POST https://api.topconsuite.io/tech-hml/integrations/classificationsupplytypes \
+              -H "Authorization: Bearer <token>" \
+              -H "Ocp-Apim-Subscription-Key: <key>" \
+              -H "Content-Type: application/json" \
+              -d '{"name":"Cimento Portland CP-V","group":"BINDER","externalId":"EXT-CST-001","active":true}'
+        - lang: javascript
+          source: |
+            const response = await fetch('https://api.topconsuite.io/tech-hml/integrations/classificationsupplytypes', {
+              method: 'POST',
+              headers: {
+                'Authorization': 'Bearer <token>',
+                'Ocp-Apim-Subscription-Key': '<key>',
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                name: 'Cimento Portland CP-V',
+                group: 'BINDER',
+                externalId: 'EXT-CST-001',
+                active: true
+              })
+            });
+
+            const data = await response.json();
+        - lang: csharp
+          source: |
+            using System.Net.Http;
+            using System.Net.Http.Headers;
+            using System.Net.Http.Json;
+
+            using var httpClient = new HttpClient();
+            httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", "<token>");
+            httpClient.DefaultRequestHeaders.Add("Ocp-Apim-Subscription-Key", "<key>");
+
+            var response = await httpClient.PostAsJsonAsync(
+                "https://api.topconsuite.io/tech-hml/integrations/classificationsupplytypes",
+                new
+                {
+                    name = "Cimento Portland CP-V",
+                    group = "BINDER",
+                    externalId = "EXT-CST-001",
+                    active = true
+                });
+
+            var payload = await response.Content.ReadAsStringAsync();
+        - lang: python
+          source: |
+            import requests
+
+            response = requests.post(
+                'https://api.topconsuite.io/tech-hml/integrations/classificationsupplytypes',
+                headers={
+                    'Authorization': 'Bearer <token>',
+                    'Ocp-Apim-Subscription-Key': '<key>'
+                },
+                json={
+                    'name': 'Cimento Portland CP-V',
+                    'group': 'BINDER',
+                    'externalId': 'EXT-CST-001',
+                    'active': True
+                }
+            )
+
+            data = response.json()
+    get:
+      tags: [ClassificationSupplyTypes]
+      summary: Listar todos os tipos de classificação de insumo
+      description: |
+        Retorna todos os tipos de classificação de insumo, opcionalmente filtrados por intervalo de data de atualização.
+        Se nenhuma data for informada, todos os registros são retornados.
+      operationId: listClassificationSupplyTypes
+      parameters:
+        - $ref: '#/components/parameters/StartUpdatedDate'
+        - $ref: '#/components/parameters/EndUpdatedDate'
+      responses:
+        '200':
+          description: Lista de tipos de classificação de insumo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClassificationSupplyTypeListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /integrations/classificationsupplytypes/{id}:
+    get:
+      tags: [ClassificationSupplyTypes]
+      summary: Obter um tipo de classificação de insumo por ID
+      description: Retorna um único tipo de classificação de insumo identificado pelo seu UUID interno.
+      operationId: getClassificationSupplyTypeById
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      responses:
+        '200':
+          description: Tipo de classificação de insumo encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClassificationSupplyTypeResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [ClassificationSupplyTypes]
+      summary: Atualizar um tipo de classificação de insumo por ID
+      description: Atualiza um único tipo de classificação de insumo identificado pelo seu UUID interno.
+      operationId: updateClassificationSupplyTypeById
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClassificationSupplyTypeInput'
+      responses:
+        '200':
+          description: Tipo de classificação de insumo atualizado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClassificationSupplyTypeResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [ClassificationSupplyTypes]
+      summary: Excluir um tipo de classificação de insumo por ID
+      description: |
+        Exclui um único tipo de classificação de insumo. A exclusão falhará se o registro
+        estiver vinculado a insumos ou custos de insumos existentes.
+      operationId: deleteClassificationSupplyTypeById
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      responses:
+        '200':
+          description: Tipo de classificação de insumo excluído com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BaseResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /integrations/classificationsupplytypes/by-external-id/{externalId}:
+    get:
+      tags: [ClassificationSupplyTypes]
+      summary: Obter um tipo de classificação de insumo por ID externo
+      description: Retorna um único tipo de classificação de insumo identificado pela sua referência no sistema externo.
+      operationId: getClassificationSupplyTypeByExternalId
+      parameters:
+        - $ref: '#/components/parameters/ExternalId'
+      responses:
+        '200':
+          description: Tipo de classificação de insumo encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClassificationSupplyTypeResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [ClassificationSupplyTypes]
+      summary: Atualizar um tipo de classificação de insumo por ID externo
+      description: Atualiza um único tipo de classificação de insumo identificado pela sua referência no sistema externo.
+      operationId: updateClassificationSupplyTypeByExternalId
+      parameters:
+        - $ref: '#/components/parameters/ExternalId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClassificationSupplyTypeInput'
+      responses:
+        '200':
+          description: Tipo de classificação de insumo atualizado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClassificationSupplyTypeResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [ClassificationSupplyTypes]
+      summary: Excluir um tipo de classificação de insumo por ID externo
+      description: Exclui um único tipo de classificação de insumo identificado pela sua referência no sistema externo.
+      operationId: deleteClassificationSupplyTypeByExternalId
+      parameters:
+        - $ref: '#/components/parameters/ExternalId'
+      responses:
+        '200':
+          description: Tipo de classificação de insumo excluído com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BaseResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  # ── Centrais de Dosagem ──
+  /integrations/concretebatchingplants:
+    post:
+      tags: [ConcreteBatchingPlants]
+      summary: Criar uma nova central de dosagem
+      description: |
+        Cria uma única central de dosagem de concreto. Os campos `code`, `abbreviation` e `externalId`
+        devem ser únicos.
+      operationId: createConcreteBatchingPlant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConcreteBatchingPlantInput'
+            example:
+              name: Central Alpha
+              abbreviation: CPA
+              code: PLANT-001
+              externalId: EXT-CBP-001
+              active: true
+      responses:
+        '201':
+          description: Central de dosagem criada com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConcreteBatchingPlantResponse'
+              example:
+                status: success
+                message: Registro criado com sucesso
+                result:
+                  id: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  name: Central Alpha
+                  abbreviation: CPA
+                  code: PLANT-001
+                  active: true
+                  externalId: EXT-CBP-001
+                  createdAt: "2025-01-15T10:30:00"
+                  updatedAt: "2025-01-15T10:30:00"
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      x-codeSamples:
+        - lang: curl
+          source: |
+            curl -X POST https://api.topconsuite.io/tech-hml/integrations/concretebatchingplants \
+              -H "Authorization: Bearer <token>" \
+              -H "Ocp-Apim-Subscription-Key: <key>" \
+              -H "Content-Type: application/json" \
+              -d '{"name":"Central Plant Alpha","abbreviation":"CPA","code":"PLANT-001","externalId":"EXT-CBP-001","active":true}'
+        - lang: javascript
+          source: |
+            const response = await fetch('https://api.topconsuite.io/tech-hml/integrations/concretebatchingplants', {
+              method: 'POST',
+              headers: {
+                'Authorization': 'Bearer <token>',
+                'Ocp-Apim-Subscription-Key': '<key>',
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                name: 'Central Plant Alpha',
+                abbreviation: 'CPA',
+                code: 'PLANT-001',
+                externalId: 'EXT-CBP-001',
+                active: true
+              })
+            });
+          
+            const data = await response.json();
+        - lang: csharp
+          source: |
+            using System.Net.Http;
+            using System.Net.Http.Headers;
+            using System.Net.Http.Json;
+          
+            using var httpClient = new HttpClient();
+            httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", "<token>");
+            httpClient.DefaultRequestHeaders.Add("Ocp-Apim-Subscription-Key", "<key>");
+          
+            var response = await httpClient.PostAsJsonAsync(
+                "https://api.topconsuite.io/tech-hml/integrations/concretebatchingplants",
+                new
+                {
+                    name = "Central Plant Alpha",
+                    abbreviation = "CPA",
+                    code = "PLANT-001",
+                    externalId = "EXT-CBP-001",
+                    active = true
+                });
+          
+            var payload = await response.Content.ReadAsStringAsync();
+        - lang: python
+          source: |
+            import requests
+          
+            response = requests.post(
+                'https://api.topconsuite.io/tech-hml/integrations/concretebatchingplants',
+                headers={
+                    'Authorization': 'Bearer <token>',
+                    'Ocp-Apim-Subscription-Key': '<key>'
+                },
+                json={
+                    'name': 'Central Plant Alpha',
+                    'abbreviation': 'CPA',
+                    'code': 'PLANT-001',
+                    'externalId': 'EXT-CBP-001',
+                    'active': True
+                }
+            )
+          
+            data = response.json()
+    get:
+      tags: [ConcreteBatchingPlants]
+      summary: Listar todas as centrais de dosagem
+      description: |
+        Retorna todas as centrais de dosagem de concreto, opcionalmente filtradas por intervalo de data de atualização.
+        Se nenhuma data for informada, todos os registros são retornados.
+      operationId: listConcreteBatchingPlants
+      parameters:
+        - $ref: '#/components/parameters/StartUpdatedDate'
+        - $ref: '#/components/parameters/EndUpdatedDate'
+      responses:
+        '200':
+          description: Lista de centrais de dosagem
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConcreteBatchingPlantListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /integrations/concretebatchingplants/{id}:
+    get:
+      tags: [ConcreteBatchingPlants]
+      summary: Obter uma central de dosagem por ID
+      description: Retorna uma única central de dosagem identificada pelo seu UUID interno.
+      operationId: getConcreteBatchingPlantById
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      responses:
+        '200':
+          description: Central de dosagem encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConcreteBatchingPlantResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [ConcreteBatchingPlants]
+      summary: Atualizar uma central de dosagem por ID
+      description: Atualiza uma única central de dosagem identificada pelo seu UUID interno.
+      operationId: updateConcreteBatchingPlantById
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConcreteBatchingPlantInput'
+      responses:
+        '200':
+          description: Central de dosagem atualizada com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConcreteBatchingPlantResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    delete:
+      tags: [ConcreteBatchingPlants]
+      summary: Excluir uma central de dosagem por ID
+      description: |
+        Exclui uma única central de dosagem. A exclusão falhará se a central estiver vinculada
+        a custos de insumo, fornecedores padrão, dados técnicos, curvas de Abrams ou ensaios de agregados.
+      operationId: deleteConcreteBatchingPlantById
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      responses:
+        '200':
+          description: Central de dosagem excluída com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BaseResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /integrations/concretebatchingplants/by-external-id/{externalId}:
+    get:
+      tags: [ConcreteBatchingPlants]
+      summary: Obter uma central de dosagem por ID externo
+      description: Retorna uma única central de dosagem identificada pela sua referência no sistema externo.
+      operationId: getConcreteBatchingPlantByExternalId
+      parameters:
+        - $ref: '#/components/parameters/ExternalId'
+      responses:
+        '200':
+          description: Central de dosagem encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConcreteBatchingPlantResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [ConcreteBatchingPlants]
+      summary: Atualizar uma central de dosagem por ID externo
+      description: Atualiza uma única central de dosagem identificada pela sua referência no sistema externo.
+      operationId: updateConcreteBatchingPlantByExternalId
+      parameters:
+        - $ref: '#/components/parameters/ExternalId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConcreteBatchingPlantInput'
+      responses:
+        '200':
+          description: Central de dosagem atualizada com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConcreteBatchingPlantResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    delete:
+      tags: [ConcreteBatchingPlants]
+      summary: Excluir uma central de dosagem por ID externo
+      description: Exclui uma única central de dosagem identificada pela sua referência no sistema externo.
+      operationId: deleteConcreteBatchingPlantByExternalId
+      parameters:
+        - $ref: '#/components/parameters/ExternalId'
+      responses:
+        '200':
+          description: Central de dosagem excluída com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BaseResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  # ── Famílias de Receita de Concreto ──
+  /integrations/concreterecipefamilies:
+    get:
+      tags: [ConcreteRecipeFamilies]
+      summary: Listar todas as famílias de receita de concreto
+      description: |
+        Retorna todas as famílias de receita de concreto, opcionalmente filtradas por intervalo de data de atualização.
+        Se `end_updated_date` não for informado, o padrão é a data/hora atual.
+        Um intervalo de datas é necessário para recuperar todos os registros.
+      operationId: listConcreteRecipeFamilies
+      parameters:
+        - $ref: '#/components/parameters/StartUpdatedDate'
+        - $ref: '#/components/parameters/EndUpdatedDate'
+      responses:
+        '200':
+          description: Lista de famílias de receita de concreto
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConcreteRecipeFamilyListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /integrations/concreterecipefamilies/{id}:
+    get:
+      tags: [ConcreteRecipeFamilies]
+      summary: Obter uma família de receita de concreto por ID
+      description: Retorna uma única família de receita de concreto com os dados de central, grupo de produto, brita e slump associados.
+      operationId: getConcreteRecipeFamilyById
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      responses:
+        '200':
+          description: Família de receita de concreto encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConcreteRecipeFamilyResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /integrations/concreterecipefamilies/by-external-id/{externalId}:
+    get:
+      tags: [ConcreteRecipeFamilies]
+      summary: Obter uma família de receita de concreto por ID externo
+      description: Retorna uma única família de receita de concreto identificada pela sua referência no sistema externo.
+      operationId: getConcreteRecipeFamilyByExternalId
+      parameters:
+        - $ref: '#/components/parameters/ExternalId'
+      responses:
+        '200':
+          description: Família de receita de concreto encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConcreteRecipeFamilyResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ── Versões de Família de Receita de Concreto ──
+  /integrations/concreterecipefamilyversions/{id}:
+    get:
+      tags: [ConcreteRecipeFamilyVersions]
+      summary: Obter uma versão de família de receita de concreto por ID
+      description: |
+        Retorna uma única versão de família de receita de concreto com todas as características,
+        insumos associados e dados de custo relacionados.
+      operationId: getConcreteRecipeFamilyVersionById
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      responses:
+        '200':
+          description: Versão de família de receita de concreto encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConcreteRecipeFamilyVersionPaginatedResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /integrations/concreterecipefamilyversions/by-created-date/:
+    get:
+      tags: [ConcreteRecipeFamilyVersions]
+      summary: Listar versões de família de receita de concreto por data de criação
+      description: |
+        Retorna versões paginadas de famílias de receita de concreto filtradas por intervalo de data de criação.
+        O parâmetro `start_created_date` é obrigatório. Se `end_created_date` não for informado,
+        o padrão é a data/hora atual.
+      operationId: listConcreteRecipeFamilyVersionsByCreatedDate
+      parameters:
+        - name: start_created_date
+          in: query
+          required: true
+          description: Início do intervalo de data de criação no formato ISO 8601
+          schema:
+            type: string
+            format: date-time
+          example: "2025-01-01T00:00:00"
+        - name: end_created_date
+          in: query
+          required: false
+          description: Fim do intervalo de data de criação no formato ISO 8601; padrão é a data/hora atual se omitido
+          schema:
+            type: string
+            format: date-time
+          example: "2025-12-31T23:59:59"
+      responses:
+        '200':
+          description: Lista paginada de versões de família de receita de concreto
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConcreteRecipeFamilyVersionPaginatedResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /integrations/concreterecipefamilyversions/by-updated-date/:
+    get:
+      tags: [ConcreteRecipeFamilyVersions]
+      summary: Listar versões de família de receita de concreto por data de atualização
+      description: |
+        Retorna versões paginadas de famílias de receita de concreto filtradas por intervalo de data de atualização.
+        O parâmetro `start_updated_date` é obrigatório. Se `end_updated_date` não for informado,
+        o padrão é a data/hora atual.
+      operationId: listConcreteRecipeFamilyVersionsByUpdatedDate
+      parameters:
+        - name: start_updated_date
+          in: query
+          required: true
+          description: Início do intervalo de data de atualização no formato ISO 8601
+          schema:
+            type: string
+            format: date-time
+          example: "2025-01-01T00:00:00"
+        - name: end_updated_date
+          in: query
+          required: false
+          description: Fim do intervalo de data de atualização no formato ISO 8601; padrão é a data/hora atual se omitido
+          schema:
+            type: string
+            format: date-time
+          example: "2025-12-31T23:59:59"
+      responses:
+        '200':
+          description: Lista paginada de versões de família de receita de concreto
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConcreteRecipeFamilyVersionPaginatedResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ── Receitas de Concreto ──
+  /integrations/concreterecipes:
+    get:
+      tags: [ConcreteRecipes]
+      summary: Listar todas as receitas de concreto
+      description: |
+        Retorna todas as receitas de concreto, opcionalmente filtradas por intervalo de data de atualização.
+        Um intervalo de datas é necessário para recuperar todos os registros.
+      operationId: listConcreteRecipes
+      parameters:
+        - $ref: '#/components/parameters/StartUpdatedDate'
+        - $ref: '#/components/parameters/EndUpdatedDate'
+      responses:
+        '200':
+          description: Lista de receitas de concreto
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConcreteRecipeListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /integrations/concreterecipes/{id}:
+    get:
+      tags: [ConcreteRecipes]
+      summary: Obter uma receita de concreto por ID
+      description: Retorna uma única receita de concreto com os dados de brita, slump, grupo de produto e características associados.
+      operationId: getConcreteRecipeById
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      responses:
+        '200':
+          description: Receita de concreto encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConcreteRecipeResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [ConcreteRecipes]
+      summary: Atualizar uma receita de concreto por ID
+      description: Atualiza uma única receita de concreto. Atualmente apenas o campo `externalId` pode ser definido ou alterado.
+      operationId: updateConcreteRecipeById
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConcreteRecipeUpdateInput'
+            example:
+              externalId: EXT-CR-001
+      responses:
+        '200':
+          description: Receita de concreto atualizada com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConcreteRecipeResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /integrations/concreterecipes/by-external-id/{externalId}:
+    get:
+      tags: [ConcreteRecipes]
+      summary: Obter uma receita de concreto por ID externo
+      description: Retorna uma única receita de concreto identificada pela sua referência no sistema externo.
+      operationId: getConcreteRecipeByExternalId
+      parameters:
+        - $ref: '#/components/parameters/ExternalId'
+      responses:
+        '200':
+          description: Receita de concreto encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConcreteRecipeResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /integrations/concreterecipes/by-numeration/{numeration}:
+    get:
+      tags: [ConcreteRecipes]
+      summary: Obter uma receita de concreto por numeração
+      description: Retorna uma única receita de concreto identificada pelo seu valor de numeração sequencial.
+      operationId: getConcreteRecipeByNumeration
+      parameters:
+        - name: numeration
+          in: path
+          required: true
+          description: Número de numeração sequencial atribuído à receita de concreto
+          schema:
+            type: integer
+          example: 42
+      responses:
+        '200':
+          description: Receita de concreto encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConcreteRecipeResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ── Custos de Insumo ──
+  /integrations/costsupplies:
+    post:
+      tags: [CostSupplies]
+      summary: Criar um novo registro de custo de insumo
+      description: |
+        Cria um único registro de custo de insumo vinculando o preço de um insumo a uma central de dosagem
+        e fornecedor. Utilize o ID ou o ID externo para vincular entidades relacionadas.
+      operationId: createCostSupply
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CostSupplyInput'
+            example:
+              costValue: 125.50
+              freightValue: 15.00
+              conversionFactor: 1.0
+              effectiveDate: "2025-03-01"
+              lossPercentage: 2.5
+              sandMoistureLevel: 0
+              externalId: EXT-CS-001
+              supplyExternalId: EXT-SUP-001
+              supplierExternalId: EXT-SUPPLIER-001
+              concreteBatchingPlantExternalId: EXT-CBP-001
+              purchaseMeasureUnitTypeExternalId: EXT-MUT-KG
+              useMeasureUnitTypeExternalId: EXT-MUT-KG
+              active: true
+      responses:
+        '201':
+          description: Registro de custo de insumo criado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CostSupplyResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      x-codeSamples:
+        - lang: curl
+          source: |
+            curl -X POST https://api.topconsuite.io/tech-hml/integrations/costsupplies \
+              -H "Authorization: Bearer <token>" \
+              -H "Ocp-Apim-Subscription-Key: <key>" \
+              -H "Content-Type: application/json" \
+              -d '{"active":true,"costValue":125.5,"freightValue":15.0,"conversionFactor":1.0,"effectiveDate":"2025-03-01","lossPercentage":2.5,"sandMoistureLevel":0,"externalId":"EXT-CS-001","supplyExternalId":"EXT-SUP-001","supplierExternalId":"EXT-SUPPLIER-001","concreteBatchingPlantExternalId":"EXT-CBP-001","purchaseMeasureUnitTypeExternalId":"EXT-MUT-KG","useMeasureUnitTypeExternalId":"EXT-MUT-KG"}'
+        - lang: javascript
+          source: |
+            const response = await fetch('https://api.topconsuite.io/tech-hml/integrations/costsupplies', {
+              method: 'POST',
+              headers: {
+                'Authorization': 'Bearer <token>',
+                'Ocp-Apim-Subscription-Key': '<key>',
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                active: true,
+                costValue: 125.5,
+                freightValue: 15.0,
+                conversionFactor: 1.0,
+                effectiveDate: '2025-03-01',
+                lossPercentage: 2.5,
+                sandMoistureLevel: 0,
+                externalId: 'EXT-CS-001',
+                supplyExternalId: 'EXT-SUP-001',
+                supplierExternalId: 'EXT-SUPPLIER-001',
+                concreteBatchingPlantExternalId: 'EXT-CBP-001',
+                purchaseMeasureUnitTypeExternalId: 'EXT-MUT-KG',
+                useMeasureUnitTypeExternalId: 'EXT-MUT-KG'
+              })
+            });
+
+            const data = await response.json();
+        - lang: csharp
+          source: |
+            using System.Net.Http;
+            using System.Net.Http.Headers;
+            using System.Net.Http.Json;
+
+            using var httpClient = new HttpClient();
+            httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", "<token>");
+            httpClient.DefaultRequestHeaders.Add("Ocp-Apim-Subscription-Key", "<key>");
+
+            var response = await httpClient.PostAsJsonAsync(
+                "https://api.topconsuite.io/tech-hml/integrations/costsupplies",
+                new
+                {
+                    active = true,
+                    costValue = 125.5,
+                    freightValue = 15.0,
+                    conversionFactor = 1.0,
+                    effectiveDate = "2025-03-01",
+                    lossPercentage = 2.5,
+                    sandMoistureLevel = 0,
+                    externalId = "EXT-CS-001",
+                    supplyExternalId = "EXT-SUP-001",
+                    supplierExternalId = "EXT-SUPPLIER-001",
+                    concreteBatchingPlantExternalId = "EXT-CBP-001",
+                    purchaseMeasureUnitTypeExternalId = "EXT-MUT-KG",
+                    useMeasureUnitTypeExternalId = "EXT-MUT-KG"
+                });
+
+            var payload = await response.Content.ReadAsStringAsync();
+        - lang: python
+          source: |
+            import requests
+
+            response = requests.post(
+                'https://api.topconsuite.io/tech-hml/integrations/costsupplies',
+                headers={
+                    'Authorization': 'Bearer <token>',
+                    'Ocp-Apim-Subscription-Key': '<key>'
+                },
+                json={
+                    'active': True,
+                    'costValue': 125.5,
+                    'freightValue': 15.0,
+                    'conversionFactor': 1.0,
+                    'effectiveDate': '2025-03-01',
+                    'lossPercentage': 2.5,
+                    'sandMoistureLevel': 0,
+                    'externalId': 'EXT-CS-001',
+                    'supplyExternalId': 'EXT-SUP-001',
+                    'supplierExternalId': 'EXT-SUPPLIER-001',
+                    'concreteBatchingPlantExternalId': 'EXT-CBP-001',
+                    'purchaseMeasureUnitTypeExternalId': 'EXT-MUT-KG',
+                    'useMeasureUnitTypeExternalId': 'EXT-MUT-KG'
+                }
+            )
+
+            data = response.json()
+    get:
+      tags: [CostSupplies]
+      summary: Listar todos os registros de custo de insumo
+      description: |
+        Retorna todos os registros de custo de insumo, opcionalmente filtrados por intervalo de data de atualização.
+        Um intervalo de datas é necessário para recuperar todos os registros.
+      operationId: listCostSupplies
+      parameters:
+        - $ref: '#/components/parameters/StartUpdatedDate'
+        - $ref: '#/components/parameters/EndUpdatedDate'
+      responses:
+        '200':
+          description: Lista de registros de custo de insumo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CostSupplyListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /integrations/costsupplies/{id}:
+    get:
+      tags: [CostSupplies]
+      summary: Obter um registro de custo de insumo por ID
+      description: Retorna um único registro de custo de insumo com os detalhes de central de dosagem, fornecedor, insumo e unidades de medida aninhados.
+      operationId: getCostSupplyById
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      responses:
+        '200':
+          description: Registro de custo de insumo encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CostSupplyResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [CostSupplies]
+      summary: Atualizar um registro de custo de insumo por ID
+      description: Atualiza um único registro de custo de insumo identificado pelo seu UUID interno.
+      operationId: updateCostSupplyById
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CostSupplyInput'
+      responses:
+        '200':
+          description: Registro de custo de insumo atualizado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CostSupplyResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [CostSupplies]
+      summary: Excluir um registro de custo de insumo por ID
+      description: Exclui um único registro de custo de insumo identificado pelo seu UUID interno.
+      operationId: deleteCostSupplyById
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      responses:
+        '200':
+          description: Registro de custo de insumo excluído com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BaseResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /integrations/costsupplies/by-external-id/{externalId}:
+    get:
+      tags: [CostSupplies]
+      summary: Obter um registro de custo de insumo por ID externo
+      description: Retorna um único registro de custo de insumo identificado pela sua referência no sistema externo.
+      operationId: getCostSupplyByExternalId
+      parameters:
+        - $ref: '#/components/parameters/ExternalId'
+      responses:
+        '200':
+          description: Registro de custo de insumo encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CostSupplyResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [CostSupplies]
+      summary: Atualizar um registro de custo de insumo por ID externo
+      description: Atualiza um único registro de custo de insumo identificado pela sua referência no sistema externo.
+      operationId: updateCostSupplyByExternalId
+      parameters:
+        - $ref: '#/components/parameters/ExternalId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CostSupplyInput'
+      responses:
+        '200':
+          description: Registro de custo de insumo atualizado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CostSupplyResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [CostSupplies]
+      summary: Excluir um registro de custo de insumo por ID externo
+      description: Exclui um único registro de custo de insumo identificado pela sua referência no sistema externo.
+      operationId: deleteCostSupplyByExternalId
+      parameters:
+        - $ref: '#/components/parameters/ExternalId'
+      responses:
+        '200':
+          description: Registro de custo de insumo excluído com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BaseResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ── Tipos de Documento de Identificação ──
+  /integrations/identificationdocumenttype:
+    get:
+      tags: [IdentificationDocumentTypes]
+      summary: Listar todos os tipos de documento de identificação
+      description: 'Retorna todos os tipos de documento de identificação cadastrados (ex.: CPF, CNPJ).'
+      operationId: listIdentificationDocumentTypes
+      responses:
+        '200':
+          description: Lista de tipos de documento de identificação
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdentificationDocumentTypeListResponse'
+              example:
+                status: success
+                message: Registros recuperados com sucesso
+                result:
+                  - id: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                    name: CPF
+                    description: Cadastro de Pessoa Física
+                    mask: "###.###.###-##"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /integrations/identificationdocumenttype/{id}:
+    get:
+      tags: [IdentificationDocumentTypes]
+      summary: Obter um tipo de documento de identificação por ID
+      description: Retorna um único tipo de documento de identificação identificado pelo seu UUID interno.
+      operationId: getIdentificationDocumentTypeById
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      responses:
+        '200':
+          description: Tipo de documento de identificação encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdentificationDocumentTypeResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ── Tipos de Unidade de Medida ──
+  /integrations/measureunittypes:
+    post:
+      tags: [MeasureUnitTypes]
+      summary: Criar um novo tipo de unidade de medida
+      description: |
+        Cria um único tipo de unidade de medida. Os campos `abbreviation` e `externalId` devem ser únicos.
+      operationId: createMeasureUnitType
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MeasureUnitTypeInput'
+            example:
+              description: Quilograma
+              abbreviation: KG
+              externalId: EXT-MUT-KG
+              active: true
+      responses:
+        '201':
+          description: Tipo de unidade de medida criado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeasureUnitTypeResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    get:
+      tags: [MeasureUnitTypes]
+      summary: Listar todos os tipos de unidade de medida
+      description: |
+        Retorna todos os tipos de unidade de medida, opcionalmente filtrados por intervalo de data de atualização.
+        Se nenhuma data for informada, todos os registros são retornados.
+      operationId: listMeasureUnitTypes
+      parameters:
+        - $ref: '#/components/parameters/StartUpdatedDate'
+        - $ref: '#/components/parameters/EndUpdatedDate'
+      responses:
+        '200':
+          description: Lista de tipos de unidade de medida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeasureUnitTypeListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /integrations/measureunittypes/{id}:
+    get:
+      tags: [MeasureUnitTypes]
+      summary: Obter um tipo de unidade de medida por ID
+      description: Retorna um único tipo de unidade de medida identificado pelo seu UUID interno.
+      operationId: getMeasureUnitTypeById
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      responses:
+        '200':
+          description: Tipo de unidade de medida encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeasureUnitTypeResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [MeasureUnitTypes]
+      summary: Atualizar um tipo de unidade de medida por ID
+      description: Atualiza um único tipo de unidade de medida identificado pelo seu UUID interno.
+      operationId: updateMeasureUnitTypeById
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MeasureUnitTypeInput'
+      responses:
+        '200':
+          description: Tipo de unidade de medida atualizado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeasureUnitTypeResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [MeasureUnitTypes]
+      summary: Excluir um tipo de unidade de medida por ID
+      description: Exclui um único tipo de unidade de medida identificado pelo seu UUID interno.
+      operationId: deleteMeasureUnitTypeById
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      responses:
+        '200':
+          description: Tipo de unidade de medida excluído com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BaseResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /integrations/measureunittypes/by-external-id/{externalId}:
+    get:
+      tags: [MeasureUnitTypes]
+      summary: Obter um tipo de unidade de medida por ID externo
+      description: Retorna um único tipo de unidade de medida identificado pela sua referência no sistema externo.
+      operationId: getMeasureUnitTypeByExternalId
+      parameters:
+        - $ref: '#/components/parameters/ExternalId'
+      responses:
+        '200':
+          description: Tipo de unidade de medida encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeasureUnitTypeResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [MeasureUnitTypes]
+      summary: Atualizar um tipo de unidade de medida por ID externo
+      description: Atualiza um único tipo de unidade de medida identificado pela sua referência no sistema externo.
+      operationId: updateMeasureUnitTypeByExternalId
+      parameters:
+        - $ref: '#/components/parameters/ExternalId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MeasureUnitTypeInput'
+      responses:
+        '200':
+          description: Tipo de unidade de medida atualizado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeasureUnitTypeResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [MeasureUnitTypes]
+      summary: Excluir um tipo de unidade de medida por ID externo
+      description: Exclui um único tipo de unidade de medida identificado pela sua referência no sistema externo.
+      operationId: deleteMeasureUnitTypeByExternalId
+      parameters:
+        - $ref: '#/components/parameters/ExternalId'
+      responses:
+        '200':
+          description: Tipo de unidade de medida excluído com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BaseResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ── Fornecedores ──
+  /integrations/suppliers:
+    post:
+      tags: [Suppliers]
+      summary: Criar um novo fornecedor
+      description: |
+        Cria um único registro de fornecedor. Os campos `externalId` e `documentNumber` devem ser
+        únicos. Vincule o tipo de documento do fornecedor utilizando `identificationDocumentTypeId`.
+      operationId: createSupplier
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SupplierInput'
+            example:
+              name: Cimento Nacional S.A.
+              company: Cimento Nacional S.A.
+              documentNumber: "12345678000199"
+              externalId: EXT-SUPPLIER-001
+              identificationDocumentTypeId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+              active: true
+      responses:
+        '201':
+          description: Fornecedor criado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SupplierResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    get:
+      tags: [Suppliers]
+      summary: Listar todos os fornecedores
+      description: |
+        Retorna todos os fornecedores, opcionalmente filtrados por intervalo de data de atualização.
+        Um intervalo de datas é necessário para recuperar todos os registros.
+      operationId: listSuppliers
+      parameters:
+        - $ref: '#/components/parameters/StartUpdatedDate'
+        - $ref: '#/components/parameters/EndUpdatedDate'
+      responses:
+        '200':
+          description: Lista de fornecedores
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SupplierListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /integrations/suppliers/{id}:
+    get:
+      tags: [Suppliers]
+      summary: Obter um fornecedor por ID
+      description: Retorna um único fornecedor com seu tipo de documento de identificação associado.
+      operationId: getSupplierById
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      responses:
+        '200':
+          description: Fornecedor encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SupplierResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [Suppliers]
+      summary: Atualizar um fornecedor por ID
+      description: Atualiza um único fornecedor identificado pelo seu UUID interno.
+      operationId: updateSupplierById
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SupplierInput'
+      responses:
+        '200':
+          description: Fornecedor atualizado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SupplierResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /integrations/suppliers/by-external-id/{externalId}:
+    get:
+      tags: [Suppliers]
+      summary: Obter um fornecedor por ID externo
+      description: Retorna um único fornecedor identificado pela sua referência no sistema externo.
+      operationId: getSupplierByExternalId
+      parameters:
+        - $ref: '#/components/parameters/ExternalId'
+      responses:
+        '200':
+          description: Fornecedor encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SupplierResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [Suppliers]
+      summary: Atualizar um fornecedor por ID externo
+      description: Atualiza um único fornecedor identificado pela sua referência no sistema externo.
+      operationId: updateSupplierByExternalId
+      parameters:
+        - $ref: '#/components/parameters/ExternalId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SupplierInput'
+      responses:
+        '200':
+          description: Fornecedor atualizado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SupplierResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ── Insumos ──
+  /integrations/supplies:
+    post:
+      tags: [Supplies]
+      summary: Criar um novo insumo
+      description: |
+        Cria um único registro de insumo (material). Os campos `name`, `abbreviation` e `externalId`
+        devem ser únicos. Opcionalmente vincule a um tipo de classificação de insumo utilizando
+        `classificationSupplyTypeId` ou `classificationSupplyTypeExternalId`.
+      operationId: createSupply
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SupplyInput'
+            example:
+              name: Areia Tipo A
+              abbreviation: ARE-A
+              group: FINE_AGGREGATE
+              externalId: EXT-SUP-001
+              composeMortar: true
+              active: true
+      responses:
+        '201':
+          description: Insumo criado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SupplyResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      x-codeSamples:
+        - lang: curl
+          source: |
+            curl -X POST https://api.topconsuite.io/tech-hml/integrations/supplies \
+              -H "Authorization: Bearer <token>" \
+              -H "Ocp-Apim-Subscription-Key: <key>" \
+              -H "Content-Type: application/json" \
+              -d '{"name":"Areia Tipo A","abbreviation":"ARE-A","group":"FINE_AGGREGATE","externalId":"EXT-SUP-001","composeMortar":true,"active":true}'
+        - lang: javascript
+          source: |
+            const response = await fetch('https://api.topconsuite.io/tech-hml/integrations/supplies', {
+              method: 'POST',
+              headers: {
+                'Authorization': 'Bearer <token>',
+                'Ocp-Apim-Subscription-Key': '<key>',
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                name: 'Areia Tipo A',
+                abbreviation: 'ARE-A',
+                group: 'FINE_AGGREGATE',
+                externalId: 'EXT-SUP-001',
+                composeMortar: true,
+                active: true
+              })
+            });
+          
+            const data = await response.json();
+        - lang: csharp
+          source: |
+            using System.Net.Http;
+            using System.Net.Http.Headers;
+            using System.Net.Http.Json;
+          
+            using var httpClient = new HttpClient();
+            httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", "<token>");
+            httpClient.DefaultRequestHeaders.Add("Ocp-Apim-Subscription-Key", "<key>");
+          
+            var response = await httpClient.PostAsJsonAsync(
+                "https://api.topconsuite.io/tech-hml/integrations/supplies",
+                new
+                {
+                    name = "Areia Tipo A",
+                    abbreviation = "ARE-A",
+                    group = "FINE_AGGREGATE",
+                    externalId = "EXT-SUP-001",
+                    composeMortar = true,
+                    active = true
+                });
+          
+            var payload = await response.Content.ReadAsStringAsync();
+        - lang: python
+          source: |
+            import requests
+          
+            response = requests.post(
+                'https://api.topconsuite.io/tech-hml/integrations/supplies',
+                headers={
+                    'Authorization': 'Bearer <token>',
+                    'Ocp-Apim-Subscription-Key': '<key>'
+                },
+                json={
+                    'name': 'Areia Tipo A',
+                    'abbreviation': 'ARE-A',
+                    'group': 'FINE_AGGREGATE',
+                    'externalId': 'EXT-SUP-001',
+                    'composeMortar': True,
+                    'active': True
+                }
+            )
+          
+            data = response.json()
+    get:
+      tags: [Supplies]
+      summary: Listar todos os insumos
+      description: |
+        Retorna todos os insumos, opcionalmente filtrados por intervalo de data de atualização.
+        Um intervalo de datas é necessário para recuperar todos os registros.
+      operationId: listSupplies
+      parameters:
+        - $ref: '#/components/parameters/StartUpdatedDate'
+        - $ref: '#/components/parameters/EndUpdatedDate'
+      responses:
+        '200':
+          description: Lista de insumos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SupplyListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /integrations/supplies/{id}:
+    get:
+      tags: [Supplies]
+      summary: Obter um insumo por ID
+      description: Retorna um único insumo com seu tipo de classificação de insumo associado.
+      operationId: getSupplyById
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      responses:
+        '200':
+          description: Insumo encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SupplyResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [Supplies]
+      summary: Atualizar um insumo por ID
+      description: Atualiza um único insumo identificado pelo seu UUID interno.
+      operationId: updateSupplyById
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SupplyInput'
+      responses:
+        '200':
+          description: Insumo atualizado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SupplyResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /integrations/supplies/by-external-id/{externalId}:
+    get:
+      tags: [Supplies]
+      summary: Obter um insumo por ID externo
+      description: Retorna um único insumo identificado pela sua referência no sistema externo.
+      operationId: getSupplyByExternalId
+      parameters:
+        - $ref: '#/components/parameters/ExternalId'
+      responses:
+        '200':
+          description: Insumo encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SupplyResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [Supplies]
+      summary: Atualizar um insumo por ID externo
+      description: Atualiza um único insumo identificado pela sua referência no sistema externo.
+      operationId: updateSupplyByExternalId
+      parameters:
+        - $ref: '#/components/parameters/ExternalId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SupplyInput'
+      responses:
+        '200':
+          description: Insumo atualizado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SupplyResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /integrations/supplies/by-numeration/{numeration}:
+    get:
+      tags: [Supplies]
+      summary: Obter um insumo por numeração
+      description: Retorna um único insumo identificado pelo seu valor de numeração sequencial.
+      operationId: getSupplyByNumeration
+      parameters:
+        - name: numeration
+          in: path
+          required: true
+          description: Número de numeração sequencial atribuído ao insumo
+          schema:
+            type: integer
+          example: 15
+      responses:
+        '200':
+          description: Insumo encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SupplyResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ── Dados Técnicos de Insumo ──
+  /integrations/technicaldatasupplies:
+    post:
+      tags: [TechnicalDataSupplies]
+      summary: Criar um novo registro de dado técnico de insumo
+      description: |
+        Cria um único registro de dado técnico de insumo vinculando as especificações técnicas de um insumo
+        a uma central de dosagem e fornecedor. A combinação de insumo, central de dosagem, fornecedor
+        e data de vigência deve ser única.
+      operationId: createTechnicalDataSupply
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TechnicalDataSupplyInput'
+            example:
+              specificMass: 2650.0
+              unitMass: 1520.0
+              effectiveDate: "2025-03-01"
+              isDefaultSupplySupplier: true
+              active: true
+              externalId: EXT-TDS-001
+              supplyExternalId: EXT-SUP-001
+              supplierExternalId: EXT-SUPPLIER-001
+              concreteBatchingPlantExternalId: EXT-CBP-001
+      responses:
+        '201':
+          description: Registro de dado técnico de insumo criado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TechnicalDataSupplyResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      x-codeSamples:
+        - lang: curl
+          source: |
+            curl -X POST https://api.topconsuite.io/tech-hml/integrations/technicaldatasupplies \
+              -H "Authorization: Bearer <token>" \
+              -H "Ocp-Apim-Subscription-Key: <key>" \
+              -H "Content-Type: application/json" \
+              -d '{"specificMass":2650.0,"unitMass":1520.0,"effectiveDate":"2025-03-01","isDefaultSupplySupplier":true,"active":true,"externalId":"EXT-TDS-001","supplyExternalId":"EXT-SUP-001","supplierExternalId":"EXT-SUPPLIER-001","concreteBatchingPlantExternalId":"EXT-CBP-001"}'
+        - lang: javascript
+          source: |
+            const response = await fetch('https://api.topconsuite.io/tech-hml/integrations/technicaldatasupplies', {
+              method: 'POST',
+              headers: {
+                'Authorization': 'Bearer <token>',
+                'Ocp-Apim-Subscription-Key': '<key>',
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                specificMass: 2650.0,
+                unitMass: 1520.0,
+                effectiveDate: '2025-03-01',
+                isDefaultSupplySupplier: true,
+                active: true,
+                externalId: 'EXT-TDS-001',
+                supplyExternalId: 'EXT-SUP-001',
+                supplierExternalId: 'EXT-SUPPLIER-001',
+                concreteBatchingPlantExternalId: 'EXT-CBP-001'
+              })
+            });
+          
+            const data = await response.json();
+        - lang: csharp
+          source: |
+            using System.Net.Http;
+            using System.Net.Http.Headers;
+            using System.Net.Http.Json;
+          
+            using var httpClient = new HttpClient();
+            httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", "<token>");
+            httpClient.DefaultRequestHeaders.Add("Ocp-Apim-Subscription-Key", "<key>");
+          
+            var response = await httpClient.PostAsJsonAsync(
+                "https://api.topconsuite.io/tech-hml/integrations/technicaldatasupplies",
+                new
+                {
+                    specificMass = 2650.0,
+                    unitMass = 1520.0,
+                    effectiveDate = "2025-03-01",
+                    isDefaultSupplySupplier = true,
+                    active = true,
+                    externalId = "EXT-TDS-001",
+                    supplyExternalId = "EXT-SUP-001",
+                    supplierExternalId = "EXT-SUPPLIER-001",
+                    concreteBatchingPlantExternalId = "EXT-CBP-001"
+                });
+          
+            var payload = await response.Content.ReadAsStringAsync();
+        - lang: python
+          source: |
+            import requests
+          
+            response = requests.post(
+                'https://api.topconsuite.io/tech-hml/integrations/technicaldatasupplies',
+                headers={
+                    'Authorization': 'Bearer <token>',
+                    'Ocp-Apim-Subscription-Key': '<key>'
+                },
+                json={
+                    'specificMass': 2650.0,
+                    'unitMass': 1520.0,
+                    'effectiveDate': '2025-03-01',
+                    'isDefaultSupplySupplier': True,
+                    'active': True,
+                    'externalId': 'EXT-TDS-001',
+                    'supplyExternalId': 'EXT-SUP-001',
+                    'supplierExternalId': 'EXT-SUPPLIER-001',
+                    'concreteBatchingPlantExternalId': 'EXT-CBP-001'
+                }
+            )
+          
+            data = response.json()
+    get:
+      tags: [TechnicalDataSupplies]
+      summary: Listar todos os registros de dados técnicos de insumo
+      description: |
+        Retorna todos os registros de dados técnicos de insumo, opcionalmente filtrados por intervalo de data de atualização.
+        Um intervalo de datas é necessário para recuperar todos os registros.
+      operationId: listTechnicalDataSupplies
+      parameters:
+        - $ref: '#/components/parameters/StartUpdatedDate'
+        - $ref: '#/components/parameters/EndUpdatedDate'
+      responses:
+        '200':
+          description: Lista de registros de dados técnicos de insumo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TechnicalDataSupplyListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /integrations/technicaldatasupplies/{id}:
+    get:
+      tags: [TechnicalDataSupplies]
+      summary: Obter um registro de dado técnico de insumo por ID
+      description: Retorna um único registro de dado técnico de insumo com os detalhes de central de dosagem, fornecedor e insumo aninhados.
+      operationId: getTechnicalDataSupplyById
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      responses:
+        '200':
+          description: Registro de dado técnico de insumo encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TechnicalDataSupplyResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [TechnicalDataSupplies]
+      summary: Atualizar um registro de dado técnico de insumo por ID
+      description: Atualiza um único registro de dado técnico de insumo identificado pelo seu UUID interno.
+      operationId: updateTechnicalDataSupplyById
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TechnicalDataSupplyInput'
+      responses:
+        '200':
+          description: Registro de dado técnico de insumo atualizado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TechnicalDataSupplyResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [TechnicalDataSupplies]
+      summary: Excluir um registro de dado técnico de insumo por ID
+      description: |
+        Exclui um único registro de dado técnico de insumo. A exclusão falhará se o registro
+        estiver vinculado a outros registros de dados técnicos no sistema.
+      operationId: deleteTechnicalDataSupplyById
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      responses:
+        '200':
+          description: Registro de dado técnico de insumo excluído com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BaseResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /integrations/technicaldatasupplies/by-external-id/{externalId}:
+    get:
+      tags: [TechnicalDataSupplies]
+      summary: Obter um registro de dado técnico de insumo por ID externo
+      description: Retorna um único registro de dado técnico de insumo identificado pela sua referência no sistema externo.
+      operationId: getTechnicalDataSupplyByExternalId
+      parameters:
+        - $ref: '#/components/parameters/ExternalId'
+      responses:
+        '200':
+          description: Registro de dado técnico de insumo encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TechnicalDataSupplyResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [TechnicalDataSupplies]
+      summary: Atualizar um registro de dado técnico de insumo por ID externo
+      description: Atualiza um único registro de dado técnico de insumo identificado pela sua referência no sistema externo.
+      operationId: updateTechnicalDataSupplyByExternalId
+      parameters:
+        - $ref: '#/components/parameters/ExternalId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TechnicalDataSupplyInput'
+      responses:
+        '200':
+          description: Registro de dado técnico de insumo atualizado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TechnicalDataSupplyResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [TechnicalDataSupplies]
+      summary: Excluir um registro de dado técnico de insumo por ID externo
+      description: Exclui um único registro de dado técnico de insumo identificado pela sua referência no sistema externo.
+      operationId: deleteTechnicalDataSupplyByExternalId
+      parameters:
+        - $ref: '#/components/parameters/ExternalId'
+      responses:
+        '200':
+          description: Registro de dado técnico de insumo excluído com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BaseResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Token Bearer obtido no endpoint de geração de token (ambientes single-tenant)
+    SubscriptionKey:
+      type: apiKey
+      in: header
+      name: Ocp-Apim-Subscription-Key
+      description: Chave de assinatura da API fornecida pela Topcon para ambientes multi-tenant
+
+  parameters:
+    ResourceId:
+      name: id
+      in: path
+      required: true
+      description: UUID interno do recurso
+      schema:
+        type: string
+        format: uuid
+      example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+
+    ExternalId:
+      name: externalId
+      in: path
+      required: true
+      description: Identificador de referência do sistema externo utilizado para vincular registros entre sistemas
+      schema:
+        type: string
+        maxLength: 100
+      example: EXT-001
+
+    StartUpdatedDate:
+      name: start_updated_date
+      in: query
+      required: false
+      description: Início do intervalo de filtro por data de atualização no formato ISO 8601 (`YYYY-MM-DDThh:mm:ss`)
+      schema:
+        type: string
+        format: date-time
+      example: "2025-01-01T00:00:00"
+
+    EndUpdatedDate:
+      name: end_updated_date
+      in: query
+      required: false
+      description: Fim do intervalo de filtro por data de atualização no formato ISO 8601; padrão é a data/hora atual se omitido
+      schema:
+        type: string
+        format: date-time
+      example: "2025-12-31T23:59:59"
+
+  responses:
+    ValidationError:
+      description: O corpo da requisição falhou na validação
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            status: error
+            message: Falha na validação
+            errorCode: "400"
+            notifications:
+              - "name: Máximo de 50 caracteres"
+
+    Unauthorized:
+      description: As credenciais de autenticação estão ausentes ou são inválidas
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            status: error
+            message: Acesso não autorizado
+            errorCode: "401"
+
+    Forbidden:
+      description: O usuário autenticado não tem permissão para realizar esta ação
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            status: error
+            message: Permissões insuficientes
+            errorCode: "403"
+
+    NotFound:
+      description: O recurso solicitado não foi encontrado
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            status: error
+            message: Recurso não encontrado
+            errorCode: "404"
+
+    Conflict:
+      description: 'A requisição conflita com o estado atual do recurso (ex.: campo único duplicado ou recurso em uso)'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            status: error
+            message: ID externo já existe
+            errorCode: "409"
+
+  schemas:
+    # ── Envelope Base ──
+    BaseResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [success, alert, error]
+          description: Status do processo executado
+          example: success
+        message:
+          type: string
+          description: Mensagem legível sobre o resultado do processo
+          example: Operação concluída com sucesso
+
+    ErrorResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [success, alert, error]
+          description: Status do processo executado
+          example: error
+        message:
+          type: string
+          description: Mensagem legível sobre o erro
+          example: Falha na validação
+        errorCode:
+          type: string
+          description: Código de erro legível por máquina para tratamento programático
+          example: "1.4.1"
+        notifications:
+          type: array
+          items:
+            type: string
+          description: Lista detalhada de mensagens de erro de validação
+          example: ["name: Máximo de 50 caracteres"]
+
+    # ── Autenticação ──
+    TokenRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          description: E-mail de login do usuário administrador
+          example: admin@company.com
+        password:
+          type: string
+          format: password
+          description: Senha de login do usuário administrador
+          example: securePassword123
+
+    TokenUpdateRequest:
+      type: object
+      required: [email, password, active]
+      properties:
+        email:
+          type: string
+          format: email
+          description: E-mail do usuário que criou o token originalmente
+          example: admin@company.com
+        password:
+          type: string
+          format: password
+          description: Senha do usuário que criou o token originalmente
+          example: securePassword123
+        active:
+          type: boolean
+          description: Defina como **false** para revogar o token ou **true** para reativá-lo
+          example: false
+
+    TokenResponse:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          properties:
+            result:
+              type: object
+              properties:
+                token:
+                  type: string
+                  description: Token Bearer gerado para autenticação na API
+                  example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U
+
+    # ── Tipo de Classificação de Insumo ──
+    SupplyGroup:
+      type: string
+      enum: [ADDITIONS, ADDITIVE, BINDER, COARSE_AGGREGATE, FINE_AGGREGATE, WATER]
+      description: Classificação de grupo de material do insumo
+      example: BINDER
+
+    ClassificationSupplyTypeInput:
+      type: object
+      required: [name, group, externalId]
+      properties:
+        name:
+          type: string
+          maxLength: 50
+          description: Nome do tipo de classificação de insumo
+          example: Cimento Portland CP-V
+        group:
+          $ref: '#/components/schemas/SupplyGroup'
+        externalId:
+          type: string
+          maxLength: 100
+          description: Referência única do sistema externo para vinculação entre sistemas (obrigatório apenas na criação)
+          example: EXT-CST-001
+        active:
+          type: boolean
+          description: Se o tipo de classificação de insumo está ativo
+          default: true
+          example: true
+
+    ClassificationSupplyType:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Identificador interno único do tipo de classificação de insumo
+          example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+        name:
+          type: string
+          maxLength: 50
+          description: Nome do tipo de classificação de insumo
+          example: Cimento Portland CP-V
+        group:
+          $ref: '#/components/schemas/SupplyGroup'
+        active:
+          type: boolean
+          description: Se o tipo de classificação de insumo está ativo
+          example: true
+        externalId:
+          type: string
+          maxLength: 100
+          description: Identificador de referência do sistema externo
+          example: EXT-CST-001
+        createdAt:
+          type: string
+          format: date-time
+          description: Data e hora em que o registro foi criado
+          example: "2025-01-15T10:30:00"
+        updatedAt:
+          type: string
+          format: date-time
+          description: Data e hora da última atualização do registro
+          example: "2025-01-15T10:30:00"
+
+    ClassificationSupplyTypeResponse:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          properties:
+            result:
+              $ref: '#/components/schemas/ClassificationSupplyType'
+
+    ClassificationSupplyTypeListResponse:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          properties:
+            result:
+              type: array
+              items:
+                $ref: '#/components/schemas/ClassificationSupplyType'
+
+    # ── Central de Dosagem ──
+    ConcreteBatchingPlantInput:
+      type: object
+      required: [name, abbreviation, code, externalId]
+      properties:
+        name:
+          type: string
+          maxLength: 50
+          description: Nome da central de dosagem de concreto
+          example: Central Alpha
+        abbreviation:
+          type: string
+          maxLength: 3
+          description: Código de abreviação curto da central de dosagem (deve ser único)
+          example: CPA
+        code:
+          type: string
+          maxLength: 10
+          description: Código identificador único da central de dosagem
+          example: PLANT-001
+        externalId:
+          type: string
+          maxLength: 100
+          description: Referência única do sistema externo (obrigatório apenas na criação)
+          example: EXT-CBP-001
+        active:
+          type: boolean
+          description: Se a central de dosagem está ativa
+          default: true
+          example: true
+
+    ConcreteBatchingPlant:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Identificador interno único da central de dosagem
+          example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+        name:
+          type: string
+          maxLength: 50
+          description: Nome da central de dosagem de concreto
+          example: Central Alpha
+        abbreviation:
+          type: string
+          maxLength: 3
+          description: Código de abreviação curto
+          example: CPA
+        code:
+          type: string
+          maxLength: 10
+          description: Código identificador único
+          example: PLANT-001
+        active:
+          type: boolean
+          description: Se a central de dosagem está ativa
+          example: true
+        externalId:
+          type: string
+          maxLength: 100
+          description: Identificador de referência do sistema externo
+          example: EXT-CBP-001
+        createdAt:
+          type: string
+          format: date-time
+          description: Data e hora em que o registro foi criado
+          example: "2025-01-15T10:30:00"
+        updatedAt:
+          type: string
+          format: date-time
+          description: Data e hora da última atualização do registro
+          example: "2025-01-15T10:30:00"
+
+    ConcreteBatchingPlantResponse:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          properties:
+            result:
+              $ref: '#/components/schemas/ConcreteBatchingPlant'
+
+    ConcreteBatchingPlantListResponse:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          properties:
+            result:
+              type: array
+              items:
+                $ref: '#/components/schemas/ConcreteBatchingPlant'
+
+    # ── Tipo de Documento de Identificação ──
+    IdentificationDocumentType:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Identificador interno único do tipo de documento de identificação
+          example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+        name:
+          type: string
+          maxLength: 50
+          description: 'Nome curto do tipo de documento (ex.: CPF, CNPJ)'
+          example: CNPJ
+        description:
+          type: string
+          maxLength: 150
+          description: Descrição completa do tipo de documento
+          example: Cadastro Nacional da Pessoa Jurídica
+        mask:
+          type: string
+          maxLength: 100
+          description: Padrão de máscara de entrada para o número do documento
+          example: "##.###.###/####-##"
+
+    IdentificationDocumentTypeResponse:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          properties:
+            result:
+              $ref: '#/components/schemas/IdentificationDocumentType'
+
+    IdentificationDocumentTypeListResponse:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          properties:
+            result:
+              type: array
+              items:
+                $ref: '#/components/schemas/IdentificationDocumentType'
+
+    # ── Tipo de Unidade de Medida ──
+    MeasureUnitTypeInput:
+      type: object
+      required: [description, abbreviation, externalId]
+      properties:
+        description:
+          type: string
+          maxLength: 50
+          description: Descrição completa do tipo de unidade de medida
+          example: Quilograma
+        abbreviation:
+          type: string
+          maxLength: 3
+          description: Abreviação curta da unidade (deve ser única)
+          example: KG
+        externalId:
+          type: string
+          maxLength: 100
+          description: Referência única do sistema externo (obrigatório apenas na criação)
+          example: EXT-MUT-KG
+        active:
+          type: boolean
+          description: Se o tipo de unidade de medida está ativo
+          default: true
+          example: true
+
+    MeasureUnitType:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Identificador interno único do tipo de unidade de medida
+          example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+        description:
+          type: string
+          maxLength: 50
+          description: Descrição completa do tipo de unidade de medida
+          example: Quilograma
+        abbreviation:
+          type: string
+          maxLength: 3
+          description: Abreviação curta da unidade
+          example: KG
+        active:
+          type: boolean
+          description: Se o tipo de unidade de medida está ativo
+          example: true
+        fixed:
+          type: boolean
+          description: Se este é um tipo de unidade definido pelo sistema (não editável)
+          example: false
+        externalId:
+          type: string
+          maxLength: 100
+          description: Identificador de referência do sistema externo
+          example: EXT-MUT-KG
+        createdAt:
+          type: string
+          format: date-time
+          description: Data e hora em que o registro foi criado
+          example: "2025-01-15T10:30:00"
+        updatedAt:
+          type: string
+          format: date-time
+          description: Data e hora da última atualização do registro
+          example: "2025-01-15T10:30:00"
+
+    MeasureUnitTypeResponse:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          properties:
+            result:
+              $ref: '#/components/schemas/MeasureUnitType'
+
+    MeasureUnitTypeListResponse:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          properties:
+            result:
+              type: array
+              items:
+                $ref: '#/components/schemas/MeasureUnitType'
+
+    # ── Fornecedor ──
+    SupplierInput:
+      type: object
+      required: [name, company, documentNumber, externalId, identificationDocumentTypeId]
+      properties:
+        name:
+          type: string
+          maxLength: 50
+          description: Nome fantasia do fornecedor
+          example: Cimento Nacional S.A.
+        company:
+          type: string
+          maxLength: 100
+          description: Razão social completa do fornecedor
+          example: Cimento Nacional S.A.
+        documentNumber:
+          type: string
+          maxLength: 100
+          description: 'Número do documento de identificação do fornecedor (ex.: CNPJ ou CPF)'
+          example: "12345678000199"
+        externalId:
+          type: string
+          maxLength: 100
+          description: Referência única do sistema externo (obrigatório apenas na criação)
+          example: EXT-SUPPLIER-001
+        identificationDocumentTypeId:
+          type: string
+          format: uuid
+          description: 'UUID do tipo de documento de identificação (ex.: CPF ou CNPJ)'
+          example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+        active:
+          type: boolean
+          description: Se o fornecedor está ativo
+          default: true
+          example: true
+
+    Supplier:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Identificador interno único do fornecedor
+          example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+        name:
+          type: string
+          maxLength: 50
+          description: Nome fantasia do fornecedor
+          example: Cimento Nacional S.A.
+        company:
+          type: string
+          maxLength: 100
+          description: Razão social completa do fornecedor
+          example: Cimento Nacional S.A.
+        documentNumber:
+          type: string
+          maxLength: 100
+          description: Número do documento de identificação do fornecedor
+          example: "12345678000199"
+        active:
+          type: boolean
+          description: Se o fornecedor está ativo
+          example: true
+        externalId:
+          type: string
+          maxLength: 130
+          description: Identificador de referência do sistema externo
+          example: EXT-SUPPLIER-001
+        identificationDocumentType:
+          $ref: '#/components/schemas/IdentificationDocumentType'
+        createdAt:
+          type: string
+          format: date-time
+          description: Data e hora em que o registro foi criado
+          example: "2025-01-15T10:30:00"
+        updatedAt:
+          type: string
+          format: date-time
+          description: Data e hora da última atualização do registro
+          example: "2025-01-15T10:30:00"
+
+    SupplierResponse:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          properties:
+            result:
+              $ref: '#/components/schemas/Supplier'
+
+    SupplierListResponse:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          properties:
+            result:
+              type: array
+              items:
+                $ref: '#/components/schemas/Supplier'
+
+    # ── Insumo ──
+    SupplyInput:
+      type: object
+      required: [name, abbreviation, group, externalId]
+      properties:
+        name:
+          type: string
+          maxLength: 50
+          description: Nome do material de insumo
+          example: Areia Tipo A
+        abbreviation:
+          type: string
+          maxLength: 10
+          description: Abreviação curta do insumo (deve ser única)
+          example: ARE-A
+        group:
+          $ref: '#/components/schemas/SupplyGroup'
+        externalId:
+          type: string
+          maxLength: 100
+          description: Referência única do sistema externo (obrigatório apenas na criação)
+          example: EXT-SUP-001
+        composeMortar:
+          type: boolean
+          description: Se este insumo é um componente de argamassa
+          default: true
+          example: true
+        active:
+          type: boolean
+          description: Se o insumo está ativo
+          default: true
+          example: true
+        classificationSupplyTypeId:
+          type: string
+          format: uuid
+          description: UUID do tipo de classificação de insumo a ser associado (alternativa ao `classificationSupplyTypeExternalId`)
+          example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+        classificationSupplyTypeExternalId:
+          type: string
+          description: ID externo do tipo de classificação de insumo a ser associado (alternativa ao `classificationSupplyTypeId`)
+          example: EXT-CST-001
+
+    Supply:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Identificador interno único do insumo
+          example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+        numeration:
+          type: integer
+          description: Número sequencial gerado pelo sistema para o insumo
+          example: 15
+        name:
+          type: string
+          maxLength: 50
+          description: Nome do material de insumo
+          example: Areia Tipo A
+        abbreviation:
+          type: string
+          maxLength: 10
+          description: Abreviação curta do insumo
+          example: ARE-A
+        active:
+          type: boolean
+          description: Se o insumo está ativo
+          example: true
+        composeMortar:
+          type: boolean
+          description: Se este insumo é um componente de argamassa
+          example: true
+        externalId:
+          type: string
+          maxLength: 100
+          description: Identificador de referência do sistema externo
+          example: EXT-SUP-001
+        group:
+          $ref: '#/components/schemas/SupplyGroup'
+        classificationSupplyType:
+          $ref: '#/components/schemas/ClassificationSupplyType'
+        createdAt:
+          type: string
+          format: date-time
+          description: Data e hora em que o registro foi criado
+          example: "2025-01-15T10:30:00"
+        updatedAt:
+          type: string
+          format: date-time
+          description: Data e hora da última atualização do registro
+          example: "2025-01-15T10:30:00"
+
+    SupplyResponse:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          properties:
+            result:
+              $ref: '#/components/schemas/Supply'
+
+    SupplyListResponse:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          properties:
+            result:
+              type: array
+              items:
+                $ref: '#/components/schemas/Supply'
+
+    # ── Custo de Insumo ──
+    CostSupplyInput:
+      type: object
+      required: [costValue, freightValue, conversionFactor, effectiveDate, externalId]
+      properties:
+        active:
+          type: boolean
+          description: Se o registro de custo de insumo está ativo
+          default: true
+          example: true
+        costValue:
+          type: number
+          format: double
+          description: Valor de custo do insumo por unidade
+          example: 125.50
+        freightValue:
+          type: number
+          format: double
+          description: Valor de frete/transporte por unidade
+          example: 15.00
+        conversionFactor:
+          type: number
+          format: double
+          description: Fator de conversão entre unidades de compra e uso
+          example: 1.0
+        effectiveDate:
+          type: string
+          format: date
+          description: Data em que este custo entra em vigência
+          example: "2025-03-01"
+        lossPercentage:
+          type: number
+          format: double
+          description: Percentual de perda do insumo durante o processo de produção
+          default: 0
+          example: 2.5
+        sandMoistureLevel:
+          type: number
+          format: double
+          description: Percentual de umidade do material de insumo
+          default: 0
+          example: 0
+        externalId:
+          type: string
+          maxLength: 100
+          description: Referência única do sistema externo (obrigatório apenas na criação)
+          example: EXT-CS-001
+        supplyId:
+          type: string
+          format: uuid
+          description: UUID do insumo vinculado (alternativa ao `supplyExternalId`)
+          example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+        supplyExternalId:
+          type: string
+          maxLength: 100
+          description: ID externo do insumo vinculado (alternativa ao `supplyId`)
+          example: EXT-SUP-001
+        supplierId:
+          type: string
+          format: uuid
+          description: UUID do fornecedor vinculado (alternativa ao `supplierExternalId`)
+          example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+        supplierExternalId:
+          type: string
+          maxLength: 100
+          description: ID externo do fornecedor vinculado (alternativa ao `supplierId`)
+          example: EXT-SUPPLIER-001
+        concreteBatchingPlantId:
+          type: string
+          format: uuid
+          description: UUID da central de dosagem vinculada (alternativa ao `concreteBatchingPlantExternalId`)
+          example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+        concreteBatchingPlantExternalId:
+          type: string
+          maxLength: 100
+          description: ID externo da central de dosagem vinculada (alternativa ao `concreteBatchingPlantId`)
+          example: EXT-CBP-001
+        purchaseMeasureUnitTypeId:
+          type: string
+          format: uuid
+          description: UUID da unidade de medida de compra (alternativa ao `purchaseMeasureUnitTypeExternalId`)
+          example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+        purchaseMeasureUnitTypeExternalId:
+          type: string
+          maxLength: 100
+          description: ID externo da unidade de medida de compra (alternativa ao `purchaseMeasureUnitTypeId`)
+          example: EXT-MUT-KG
+        useMeasureUnitTypeId:
+          type: string
+          format: uuid
+          description: UUID da unidade de medida de uso (alternativa ao `useMeasureUnitTypeExternalId`)
+          example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+        useMeasureUnitTypeExternalId:
+          type: string
+          maxLength: 100
+          description: ID externo da unidade de medida de uso (alternativa ao `useMeasureUnitTypeId`)
+          example: EXT-MUT-KG
+
+    CostSupply:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Identificador interno único do registro de custo de insumo
+          example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+        active:
+          type: boolean
+          description: Se o registro de custo de insumo está ativo
+          example: true
+        costValue:
+          type: number
+          format: double
+          description: Valor de custo do insumo por unidade
+          example: 125.50
+        freightValue:
+          type: number
+          format: double
+          description: Valor de frete/transporte por unidade
+          example: 15.00
+        conversionFactor:
+          type: number
+          format: double
+          description: Fator de conversão entre unidades de compra e uso
+          example: 1.0
+        effectiveDate:
+          type: string
+          format: date
+          description: Data em que este custo entrou em vigência
+          example: "2025-03-01"
+        lossPercentage:
+          type: number
+          format: double
+          description: Percentual de perda do insumo durante a produção
+          example: 2.5
+        sandMoistureLevel:
+          type: number
+          format: double
+          description: Percentual de umidade do material de insumo
+          example: 0
+        externalId:
+          type: string
+          maxLength: 100
+          description: Identificador de referência do sistema externo
+          example: EXT-CS-001
+        concreteBatchingPlant:
+          $ref: '#/components/schemas/ConcreteBatchingPlant'
+        supplier:
+          $ref: '#/components/schemas/Supplier'
+        supply:
+          $ref: '#/components/schemas/Supply'
+        purchaseMeasureUnitType:
+          $ref: '#/components/schemas/MeasureUnitType'
+        useMeasureUnitType:
+          $ref: '#/components/schemas/MeasureUnitType'
+        createdAt:
+          type: string
+          format: date-time
+          description: Data e hora em que o registro foi criado
+          example: "2025-01-15T10:30:00"
+        updatedAt:
+          type: string
+          format: date-time
+          description: Data e hora da última atualização do registro
+          example: "2025-01-15T10:30:00"
+
+    CostSupplyResponse:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          properties:
+            result:
+              $ref: '#/components/schemas/CostSupply'
+
+    CostSupplyListResponse:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          properties:
+            result:
+              type: array
+              items:
+                $ref: '#/components/schemas/CostSupply'
+
+    # ── Dado Técnico de Insumo ──
+    TechnicalDataSupplyInput:
+      type: object
+      required: [specificMass, unitMass, effectiveDate, externalId]
+      properties:
+        specificMass:
+          type: number
+          format: double
+          description: Massa específica do material de insumo (kg/m³)
+          example: 2650.0
+        unitMass:
+          type: number
+          format: double
+          description: Massa unitária do material de insumo (kg/m³)
+          example: 1520.0
+        effectiveDate:
+          type: string
+          format: date
+          description: Data em que este dado técnico entra em vigência (deve ser único por combinação insumo/central/fornecedor)
+          example: "2025-03-01"
+        isDefaultSupplySupplier:
+          type: boolean
+          description: Se este registro é o dado técnico padrão para o par insumo-fornecedor
+          default: true
+          example: true
+        active:
+          type: boolean
+          description: Se o registro de dado técnico de insumo está ativo
+          default: true
+          example: true
+        externalId:
+          type: string
+          maxLength: 100
+          description: Referência única do sistema externo (obrigatório apenas na criação)
+          example: EXT-TDS-001
+        supplyId:
+          type: string
+          format: uuid
+          description: UUID do insumo vinculado (alternativa ao `supplyExternalId`)
+          example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+        supplyExternalId:
+          type: string
+          description: ID externo do insumo vinculado (alternativa ao `supplyId`)
+          example: EXT-SUP-001
+        supplierId:
+          type: string
+          format: uuid
+          description: UUID do fornecedor vinculado (alternativa ao `supplierExternalId`)
+          example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+        supplierExternalId:
+          type: string
+          description: ID externo do fornecedor vinculado (alternativa ao `supplierId`)
+          example: EXT-SUPPLIER-001
+        concreteBatchingPlantId:
+          type: string
+          format: uuid
+          description: UUID da central de dosagem vinculada (alternativa ao `concreteBatchingPlantExternalId`)
+          example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+        concreteBatchingPlantExternalId:
+          type: string
+          description: ID externo da central de dosagem vinculada (alternativa ao `concreteBatchingPlantId`)
+          example: EXT-CBP-001
+
+    TechnicalDataSupply:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Identificador interno único do registro de dado técnico de insumo
+          example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+        specificMass:
+          type: number
+          format: double
+          description: Massa específica do material de insumo (kg/m³)
+          example: 2650.0
+        unitMass:
+          type: number
+          format: double
+          description: Massa unitária do material de insumo (kg/m³)
+          example: 1520.0
+        effectiveDate:
+          type: string
+          format: date
+          description: Data em que este dado técnico entrou em vigência
+          example: "2025-03-01"
+        isDefaultSupplySupplier:
+          type: boolean
+          description: Se este é o dado técnico padrão para o par insumo-fornecedor
+          example: true
+        active:
+          type: boolean
+          description: Se o registro de dado técnico de insumo está ativo
+          example: true
+        externalId:
+          type: string
+          maxLength: 100
+          description: Identificador de referência do sistema externo
+          example: EXT-TDS-001
+        concreteBatchingPlant:
+          $ref: '#/components/schemas/ConcreteBatchingPlant'
+        supplier:
+          $ref: '#/components/schemas/Supplier'
+        supply:
+          $ref: '#/components/schemas/Supply'
+        createdAt:
+          type: string
+          format: date-time
+          description: Data e hora em que o registro foi criado
+          example: "2025-01-15T10:30:00"
+        updatedAt:
+          type: string
+          format: date-time
+          description: Data e hora da última atualização do registro
+          example: "2025-01-15T10:30:00"
+
+    TechnicalDataSupplyResponse:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          properties:
+            result:
+              $ref: '#/components/schemas/TechnicalDataSupply'
+
+    TechnicalDataSupplyListResponse:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          properties:
+            result:
+              type: array
+              items:
+                $ref: '#/components/schemas/TechnicalDataSupply'
+
+    # ── Família de Receita de Concreto ──
+    ProductType:
+      type: string
+      enum: [NORMAL, SPECIAL, MORTAR]
+      description: Classificação de tipo do grupo de produto
+      example: NORMAL
+
+    ProductGroup:
+      type: object
+      properties:
+        externalId:
+          type: string
+          maxLength: 100
+          description: Identificador de referência do sistema externo para o grupo de produto
+          example: EXT-PG-001
+        name:
+          type: string
+          maxLength: 130
+          description: Nome do grupo de produto
+          example: Concreto Convencional
+        abbreviation:
+          type: string
+          maxLength: 130
+          description: Abreviação do grupo de produto
+          example: CC
+        active:
+          type: boolean
+          description: Se o grupo de produto está ativo
+          example: true
+        special:
+          type: boolean
+          description: Se este é um grupo de produto especial
+          example: false
+        productType:
+          $ref: '#/components/schemas/ProductType'
+
+    Gravel:
+      type: object
+      properties:
+        externalId:
+          type: string
+          maxLength: 100
+          description: Identificador de referência do sistema externo para o tipo de brita
+          example: EXT-GRV-001
+        name:
+          type: string
+          maxLength: 130
+          description: Nome do tipo de brita
+          example: Brita 19mm
+        description:
+          type: string
+          maxLength: 130
+          description: Descrição do tipo de brita
+          example: Brita britada com diâmetro máximo de 19mm
+        active:
+          type: boolean
+          description: Se o tipo de brita está ativo
+          example: true
+        fixed:
+          type: boolean
+          description: Se este é um tipo de brita definido pelo sistema
+          example: false
+
+    Slump:
+      type: object
+      properties:
+        externalId:
+          type: string
+          maxLength: 100
+          description: Identificador de referência do sistema externo para a especificação de slump
+          example: EXT-SLM-001
+        value:
+          type: number
+          format: double
+          description: Valor alvo de slump
+          example: 100.0
+        amplitude:
+          type: number
+          format: double
+          description: Tolerância de amplitude aceitável para a medição de slump
+          example: 20.0
+        active:
+          type: boolean
+          description: Se a especificação de slump está ativa
+          example: true
+        unitTypeId:
+          type: string
+          format: uuid
+          description: UUID do tipo de unidade de medida para este valor de slump
+          example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+        ClassTypeId:
+          type: string
+          format: uuid
+          description: UUID do tipo de classificação relacionado a este slump
+          example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+
+    ConcreteRecipeFamily:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Identificador interno único da família de receita de concreto
+          example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+        externalId:
+          type: string
+          maxLength: 100
+          description: Identificador de referência do sistema externo
+          example: EXT-CRF-001
+        active:
+          type: boolean
+          description: Se a família de receita está ativa
+          example: true
+        commercialDefault:
+          type: boolean
+          description: Se esta é a família de receita comercial padrão
+          example: true
+        specification:
+          type: string
+          maxLength: 130
+          description: Especificação técnica da família de receita
+          example: "FCK 25 MPA - Slump 100±20 - Brita 19mm"
+        numeration:
+          type: integer
+          description: Número sequencial gerado pelo sistema para a família de receita
+          example: 1
+        currentVersionId:
+          type: string
+          format: uuid
+          description: UUID da versão atualmente ativa desta família de receita
+          example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+        lastVersionId:
+          type: string
+          format: uuid
+          description: UUID da versão mais recente desta família de receita
+          example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+        createdAt:
+          type: string
+          format: date-time
+          description: Data e hora em que o registro foi criado
+          example: "2025-01-15T10:30:00"
+        updatedAt:
+          type: string
+          format: date-time
+          description: Data e hora da última atualização do registro
+          example: "2025-01-15T10:30:00"
+        concreteBatchingPlant:
+          $ref: '#/components/schemas/ConcreteBatchingPlant'
+        productGroup:
+          $ref: '#/components/schemas/ProductGroup'
+        gravel:
+          $ref: '#/components/schemas/Gravel'
+        slump:
+          $ref: '#/components/schemas/Slump'
+        slumpInitial:
+          $ref: '#/components/schemas/Slump'
+
+    ConcreteRecipeFamilyResponse:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          properties:
+            result:
+              $ref: '#/components/schemas/ConcreteRecipeFamily'
+
+    ConcreteRecipeFamilyListResponse:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          properties:
+            result:
+              type: array
+              items:
+                $ref: '#/components/schemas/ConcreteRecipeFamily'
+
+    # ── Versão de Família de Receita de Concreto ──
+    VersionStatus:
+      type: string
+      enum: [IN_EXPERIMENT, ACTIVE, FUTURE_ACTIVE, INACTIVE]
+      description: Status do ciclo de vida da versão da família de receita
+      example: ACTIVE
+
+    DispersionInputData:
+      type: string
+      enum: [COEFFICIENT_OF_VARIATION, STANDARD_DEVIATION]
+      description: Método de dados de dispersão de entrada utilizado nos cálculos
+      example: STANDARD_DEVIATION
+
+    InputDataMethod:
+      type: string
+      enum: [TECHNICAL_DATA, MANUALLY]
+      description: Método utilizado para inserir dados da receita
+      example: TECHNICAL_DATA
+
+    ConcreteRecipeFamilyVersion:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Identificador interno único da versão da família de receita
+          example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+        externalId:
+          type: string
+          maxLength: 100
+          description: Identificador de referência do sistema externo
+          example: EXT-CRFV-001
+        statusDate:
+          type: string
+          format: date
+          description: Data em que o status atual foi definido
+          example: "2025-01-15"
+        createdAt:
+          type: string
+          format: date-time
+          description: Data e hora em que o registro foi criado
+          example: "2025-01-15T10:30:00"
+        updatedAt:
+          type: string
+          format: date-time
+          description: Data e hora da última atualização do registro
+          example: "2025-01-15T10:30:00"
+        note:
+          type: string
+          description: Observações opcionais sobre esta versão
+          example: Versão inicial para o 1º trimestre de 2025
+        version:
+          type: integer
+          description: Número de versão sequencial dentro da família de receita
+          example: 1
+        status:
+          $ref: '#/components/schemas/VersionStatus'
+        defaultDispersionInputData:
+          $ref: '#/components/schemas/DispersionInputData'
+        inputDataMethod:
+          $ref: '#/components/schemas/InputDataMethod'
+        defaultMortarContent:
+          type: number
+          format: double
+          description: Percentual de teor de argamassa padrão
+          example: 52.5
+        waterContent:
+          type: number
+          format: double
+          description: Teor de água na receita (litros por m³)
+          example: 190.0
+        defaultIncorporatedAir:
+          type: number
+          format: double
+          description: Percentual de ar incorporado padrão
+          example: 1.5
+        defaultVolume:
+          type: number
+          format: double
+          description: Volume de referência padrão (m³)
+          example: 1000.0
+        defaultDispersionValue:
+          type: number
+          format: double
+          description: Valor de dispersão padrão para cálculos estatísticos
+          example: 4.0
+        mortarContentStep:
+          type: number
+          format: double
+          description: Incremento de ajuste do teor de argamassa
+          example: 0.5
+        waterStep:
+          type: number
+          format: double
+          description: Incremento de ajuste do teor de água
+          example: 5.0
+        waterCementRatioStepReference:
+          type: number
+          format: double
+          description: Incremento de referência para a relação água/cimento
+          example: 0.05
+        costUpdateDate:
+          type: string
+          format: date
+          description: Data da última atualização das informações de custo para esta versão
+          example: "2025-02-01"
+        concreteRecipeFamilyId:
+          type: string
+          format: uuid
+          description: UUID da família de receita pai
+          example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+        concreteRecipeFamily:
+          $ref: '#/components/schemas/ConcreteRecipeFamily'
+
+    ConcreteRecipeFamilyVersionPaginatedResponse:
+      type: object
+      properties:
+        page:
+          type: integer
+          description: Número da página atual (iniciando em 1)
+          example: 1
+        perPage:
+          type: integer
+          description: Número de registros por página
+          example: 20
+        pageCount:
+          type: integer
+          description: Número total de páginas disponíveis
+          example: 5
+        totalCount:
+          type: integer
+          description: Número total de registros correspondentes à consulta
+          example: 97
+        result:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConcreteRecipeFamilyVersion'
+        status:
+          type: string
+          enum: [success, alert, error]
+          description: Status do processo executado
+          example: success
+        message:
+          type: string
+          description: Mensagem legível sobre o resultado
+          example: Registros recuperados com sucesso
+        errorCode:
+          type: string
+          description: Código de erro legível por máquina, se aplicável
+        notifications:
+          type: array
+          items:
+            type: string
+          description: Lista de mensagens de validação, se aplicável
+
+    # ── Receita de Concreto ──
+    MeasureUnitTypeCharacteristic:
+      type: string
+      enum: [GPA, KGM_3, MPA, PERCENTAGE]
+      description: Característica de unidade de medida utilizada para características de concreto
+      example: MPA
+
+    ConcreteCharacteristicsType:
+      type: object
+      properties:
+        externalId:
+          type: string
+          maxLength: 100
+          description: Referência do sistema externo para o tipo de característica
+          example: EXT-CCT-001
+        abbreviation:
+          type: string
+          maxLength: 30
+          description: Abreviação do tipo de característica
+          example: FCK
+        active:
+          type: boolean
+          description: Se o tipo de característica está ativo
+          example: true
+        fixed:
+          type: boolean
+          description: Se este é um tipo de característica definido pelo sistema
+          example: true
+        mask:
+          type: string
+          maxLength: 50
+          description: Padrão de máscara de formatação para os valores da característica
+          example: "###.##"
+        description:
+          type: string
+          maxLength: 130
+          description: Descrição completa do tipo de característica
+          example: Resistência Característica à Compressão
+        measureUnitTypeCharacteristic:
+          $ref: '#/components/schemas/MeasureUnitTypeCharacteristic'
+
+    ConcreteRecipeUpdateInput:
+      type: object
+      required: [externalId]
+      properties:
+        externalId:
+          type: string
+          maxLength: 100
+          description: Referência única do sistema externo para vincular a receita de concreto entre sistemas
+          example: EXT-CR-001
+
+    ConcreteRecipe:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Identificador interno único da receita de concreto
+          example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+        externalId:
+          type: string
+          maxLength: 100
+          description: Identificador de referência do sistema externo
+          example: EXT-CR-001
+        numeration:
+          type: integer
+          description: Número sequencial gerado pelo sistema para a receita
+          example: 42
+        specification:
+          type: string
+          maxLength: 130
+          description: Especificação técnica da receita de concreto
+          example: "FCK 25 MPA - Slump 100±20"
+        description:
+          type: string
+          maxLength: 130
+          description: Descrição legível da receita de concreto
+          example: Concreto 25 MPa para uso estrutural
+        concreteRecipeCharacteristicValue:
+          type: number
+          format: double
+          description: 'Valor da característica principal da receita (ex.: resistência à compressão em MPa)'
+          example: 25.0
+        active:
+          type: boolean
+          description: Se a receita está ativa
+          example: true
+        createdAt:
+          type: string
+          format: date-time
+          description: Data e hora em que o registro foi criado
+          example: "2025-01-15T10:30:00"
+        updatedAt:
+          type: string
+          format: date-time
+          description: Data e hora da última atualização do registro
+          example: "2025-01-15T10:30:00"
+        gravel:
+          $ref: '#/components/schemas/Gravel'
+        slump:
+          $ref: '#/components/schemas/Slump'
+        slumpInitial:
+          $ref: '#/components/schemas/Slump'
+        productGroup:
+          $ref: '#/components/schemas/ProductGroup'
+        concreteCharacteristicsType:
+          $ref: '#/components/schemas/ConcreteCharacteristicsType'
+
+    ConcreteRecipeResponse:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          properties:
+            result:
+              $ref: '#/components/schemas/ConcreteRecipe'
+
+    ConcreteRecipeListResponse:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          properties:
+            result:
+              type: array
+              items:
+                $ref: '#/components/schemas/ConcreteRecipe'

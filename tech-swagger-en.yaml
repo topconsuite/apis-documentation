@@ -1,0 +1,3620 @@
+openapi: 3.0.3
+info:
+  title: Topcon Tech Integration API
+  version: 1.0.0
+  description: |
+    The **Topcon Tech Integration API** provides endpoints for managing concrete technology resources including supplies, suppliers, concrete batching plants, concrete recipes, and related entities. This API is designed for system-to-system integration, enabling external ERP and management systems to synchronize master data with the Topcon Suite platform.
+
+    Authentication is handled via **Bearer JWT tokens** (single-tenant) or **API subscription keys** (multi-tenant). All responses follow a standard envelope with `status`, `message`, `result`, and optional `errorCode` fields.
+  contact:
+    name: Topcon Suite Support
+    url: https://topconsuite.io
+servers:
+  - url: https://api.topconsuite.io/tech-hml
+    description: Multi-tenant Beta (HML) environment
+  - url: https://{client}-api.topconsuite.app/tech
+    description: Single-tenant client environment
+    variables:
+      client:
+        default: demo
+        description: Client-specific subdomain prefix
+
+tags:
+  - name: Authentication
+    description: Token generation and management for single-tenant environments
+    x-displayName: Authentication
+  - name: ClassificationSupplyTypes
+    description: Manage classification types used to categorize supplies by material group
+    x-displayName: Classification Supply Types
+  - name: ConcreteBatchingPlants
+    description: Manage concrete batching plant registrations
+    x-displayName: Concrete Batching Plants
+  - name: ConcreteRecipeFamilies
+    description: Read and update concrete recipe family records
+    x-displayName: Concrete Recipe Families
+  - name: ConcreteRecipeFamilyVersions
+    description: Read concrete recipe family version data including characteristics and supply details
+    x-displayName: Concrete Recipe Family Versions
+  - name: ConcreteRecipes
+    description: Read and update concrete recipe records
+    x-displayName: Concrete Recipes
+  - name: CostSupplies
+    description: Manage supply cost records including pricing, freight, and conversion factors
+    x-displayName: Cost Supplies
+  - name: IdentificationDocumentTypes
+    description: Read identification document types such as CPF and CNPJ
+    x-displayName: Identification Document Types
+  - name: MeasureUnitTypes
+    description: Manage measurement unit types used across the platform
+    x-displayName: Measure Unit Types
+  - name: Suppliers
+    description: Manage supplier registrations with document identification
+    x-displayName: Suppliers
+  - name: Supplies
+    description: Manage supply (material) registrations used in concrete production
+    x-displayName: Supplies
+  - name: TechnicalDataSupplies
+    description: Manage technical data for supplies including specific mass and unit mass per batching plant
+    x-displayName: Technical Data Supplies
+
+x-tagGroups:
+  - name: Authentication
+    tags:
+      - Authentication
+  - name: Core Resources
+    tags:
+      - Supplies
+      - Suppliers
+      - CostSupplies
+      - TechnicalDataSupplies
+  - name: Classification & Units
+    tags:
+      - ClassificationSupplyTypes
+      - MeasureUnitTypes
+      - IdentificationDocumentTypes
+  - name: Concrete Production
+    tags:
+      - ConcreteBatchingPlants
+      - ConcreteRecipeFamilies
+      - ConcreteRecipeFamilyVersions
+      - ConcreteRecipes
+
+security:
+  - BearerAuth: []
+  - SubscriptionKey: []
+
+paths:
+  # ── Authentication ──
+  /integrationtokens/integration:
+    post:
+      tags: [Authentication]
+      summary: Generate a new integration token
+      description: |
+        Generates a new Bearer token for API authentication in **single-tenant** environments.
+        Only admin users can generate public integration tokens. For multi-tenant environments,
+        use the `Ocp-Apim-Subscription-Key` header instead.
+      operationId: generateToken
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenRequest'
+            example:
+              email: admin@company.com
+              password: securePassword123
+      responses:
+        '200':
+          description: Token generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+              example:
+                status: success
+                message: Token generated successfully
+                result:
+                  token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+      x-codeSamples:
+        - lang: curl
+          source: |
+            curl -X POST https://api.topconsuite.io/tech-hml/integrationtokens/integration \
+              -H "Content-Type: application/json" \
+              -d '{"email":"admin@company.com","password":"securePassword123"}'
+        - lang: javascript
+          source: |
+            const response = await fetch('https://api.topconsuite.io/tech-hml/integrationtokens/integration', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                email: 'admin@company.com',
+                password: 'securePassword123'
+              })
+            });
+
+            const data = await response.json();
+        - lang: csharp
+          source: |
+            using System.Net.Http;
+            using System.Net.Http.Json;
+
+            using var httpClient = new HttpClient();
+
+            var response = await httpClient.PostAsJsonAsync(
+                "https://api.topconsuite.io/tech-hml/integrationtokens/integration",
+                new
+                {
+                    email = "admin@company.com",
+                    password = "securePassword123"
+                });
+
+            var payload = await response.Content.ReadAsStringAsync();
+        - lang: python
+          source: |
+            import requests
+
+            response = requests.post(
+                'https://api.topconsuite.io/tech-hml/integrationtokens/integration',
+                json={
+                    'email': 'admin@company.com',
+                    'password': 'securePassword123'
+                }
+            )
+
+            data = response.json()
+
+  /integrationtokens/integration/{token}:
+    patch:
+      tags: [Authentication]
+      summary: Revoke or activate an existing token
+      description: |
+        Updates the status of an existing integration token. Set `active` to **false** to revoke
+        or **true** to reactivate. The request must include the credentials of the user who
+        originally created the token.
+      operationId: updateToken
+      security: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          description: The token string to revoke or activate
+          schema:
+            type: string
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenUpdateRequest'
+            example:
+              email: admin@company.com
+              password: securePassword123
+              active: false
+      responses:
+        '200':
+          description: Token status updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BaseResponse'
+              example:
+                status: success
+                message: Token revoked successfully
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ── Classification Supply Types ──
+  /integrations/classificationsupplytypes:
+    post:
+      tags: [ClassificationSupplyTypes]
+      summary: Create a new classification supply type
+      description: |
+        Creates a single classification supply type. The `externalId` field must be unique
+        across all classification supply types and is used to link records between external systems.
+      operationId: createClassificationSupplyType
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClassificationSupplyTypeInput'
+            example:
+              name: Portland Cement CP-V
+              group: BINDER
+              externalId: EXT-CST-001
+              active: true
+      responses:
+        '201':
+          description: Classification supply type created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClassificationSupplyTypeResponse'
+              example:
+                status: success
+                message: Classification supply type created successfully
+                result:
+                  id: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  name: Portland Cement CP-V
+                  group: BINDER
+                  active: true
+                  externalId: EXT-CST-001
+                  createdAt: "2025-01-15T10:30:00"
+                  updatedAt: "2025-01-15T10:30:00"
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      x-codeSamples:
+        - lang: curl
+          source: |
+            curl -X POST https://api.topconsuite.io/tech-hml/integrations/classificationsupplytypes \
+              -H "Authorization: Bearer <token>" \
+              -H "Ocp-Apim-Subscription-Key: <key>" \
+              -H "Content-Type: application/json" \
+              -d '{"name":"Portland Cement CP-V","group":"BINDER","externalId":"EXT-CST-001","active":true}'
+        - lang: javascript
+          source: |
+            const response = await fetch('https://api.topconsuite.io/tech-hml/integrations/classificationsupplytypes', {
+              method: 'POST',
+              headers: {
+                'Authorization': 'Bearer <token>',
+                'Ocp-Apim-Subscription-Key': '<key>',
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                name: 'Portland Cement CP-V',
+                group: 'BINDER',
+                externalId: 'EXT-CST-001',
+                active: true
+              })
+            });
+
+            const data = await response.json();
+        - lang: csharp
+          source: |
+            using System.Net.Http;
+            using System.Net.Http.Headers;
+            using System.Net.Http.Json;
+
+            using var httpClient = new HttpClient();
+            httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", "<token>");
+            httpClient.DefaultRequestHeaders.Add("Ocp-Apim-Subscription-Key", "<key>");
+
+            var response = await httpClient.PostAsJsonAsync(
+                "https://api.topconsuite.io/tech-hml/integrations/classificationsupplytypes",
+                new
+                {
+                    name = "Portland Cement CP-V",
+                    group = "BINDER",
+                    externalId = "EXT-CST-001",
+                    active = true
+                });
+
+            var payload = await response.Content.ReadAsStringAsync();
+        - lang: python
+          source: |
+            import requests
+
+            response = requests.post(
+                'https://api.topconsuite.io/tech-hml/integrations/classificationsupplytypes',
+                headers={
+                    'Authorization': 'Bearer <token>',
+                    'Ocp-Apim-Subscription-Key': '<key>'
+                },
+                json={
+                    'name': 'Portland Cement CP-V',
+                    'group': 'BINDER',
+                    'externalId': 'EXT-CST-001',
+                    'active': True
+                }
+            )
+
+            data = response.json()
+    get:
+      tags: [ClassificationSupplyTypes]
+      summary: List all classification supply types
+      description: |
+        Returns all classification supply types, optionally filtered by update date range.
+        If `end_updated_date` is not provided, defaults to the current timestamp.
+        If neither date is provided, all records are returned.
+      operationId: listClassificationSupplyTypes
+      parameters:
+        - $ref: '#/components/parameters/StartUpdatedDate'
+        - $ref: '#/components/parameters/EndUpdatedDate'
+      responses:
+        '200':
+          description: List of classification supply types
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClassificationSupplyTypeListResponse'
+              example:
+                status: success
+                message: Records retrieved successfully
+                result:
+                  - id: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                    name: Portland Cement CP-V
+                    group: BINDER
+                    active: true
+                    externalId: EXT-CST-001
+                    createdAt: "2025-01-15T10:30:00"
+                    updatedAt: "2025-01-15T10:30:00"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /integrations/classificationsupplytypes/{id}:
+    get:
+      tags: [ClassificationSupplyTypes]
+      summary: Get a classification supply type by ID
+      description: Returns a single classification supply type identified by its internal UUID.
+      operationId: getClassificationSupplyTypeById
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      responses:
+        '200':
+          description: Classification supply type found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClassificationSupplyTypeResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [ClassificationSupplyTypes]
+      summary: Update a classification supply type by ID
+      description: Updates a single classification supply type identified by its internal UUID.
+      operationId: updateClassificationSupplyTypeById
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClassificationSupplyTypeInput'
+      responses:
+        '200':
+          description: Classification supply type updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClassificationSupplyTypeResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [ClassificationSupplyTypes]
+      summary: Delete a classification supply type by ID
+      description: |
+        Deletes a single classification supply type. Deletion will fail if the record
+        is linked to existing supplies or cost supplies.
+      operationId: deleteClassificationSupplyTypeById
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      responses:
+        '200':
+          description: Classification supply type deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BaseResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /integrations/classificationsupplytypes/by-external-id/{externalId}:
+    get:
+      tags: [ClassificationSupplyTypes]
+      summary: Get a classification supply type by external ID
+      description: Returns a single classification supply type identified by its external system reference.
+      operationId: getClassificationSupplyTypeByExternalId
+      parameters:
+        - $ref: '#/components/parameters/ExternalId'
+      responses:
+        '200':
+          description: Classification supply type found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClassificationSupplyTypeResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [ClassificationSupplyTypes]
+      summary: Update a classification supply type by external ID
+      description: Updates a single classification supply type identified by its external system reference.
+      operationId: updateClassificationSupplyTypeByExternalId
+      parameters:
+        - $ref: '#/components/parameters/ExternalId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClassificationSupplyTypeInput'
+      responses:
+        '200':
+          description: Classification supply type updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClassificationSupplyTypeResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [ClassificationSupplyTypes]
+      summary: Delete a classification supply type by external ID
+      description: Deletes a single classification supply type identified by its external system reference.
+      operationId: deleteClassificationSupplyTypeByExternalId
+      parameters:
+        - $ref: '#/components/parameters/ExternalId'
+      responses:
+        '200':
+          description: Classification supply type deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BaseResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  # ── Concrete Batching Plants ──
+  /integrations/concretebatchingplants:
+    post:
+      tags: [ConcreteBatchingPlants]
+      summary: Create a new concrete batching plant
+      description: |
+        Creates a single concrete batching plant. Fields `code`, `abbreviation`, and `externalId`
+        must be unique across all batching plants.
+      operationId: createConcreteBatchingPlant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConcreteBatchingPlantInput'
+            example:
+              name: Central Plant Alpha
+              abbreviation: CPA
+              code: PLANT-001
+              externalId: EXT-CBP-001
+              active: true
+      responses:
+        '201':
+          description: Concrete batching plant created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConcreteBatchingPlantResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    get:
+      tags: [ConcreteBatchingPlants]
+      summary: List all concrete batching plants
+      description: |
+        Returns all concrete batching plants, optionally filtered by update date range.
+        If `end_updated_date` is not provided, defaults to the current timestamp.
+      operationId: listConcreteBatchingPlants
+      parameters:
+        - $ref: '#/components/parameters/StartUpdatedDate'
+        - $ref: '#/components/parameters/EndUpdatedDate'
+      responses:
+        '200':
+          description: List of concrete batching plants
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConcreteBatchingPlantListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /integrations/concretebatchingplants/{id}:
+    get:
+      tags: [ConcreteBatchingPlants]
+      summary: Get a concrete batching plant by ID
+      description: Returns a single concrete batching plant identified by its internal UUID.
+      operationId: getConcreteBatchingPlantById
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      responses:
+        '200':
+          description: Concrete batching plant found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConcreteBatchingPlantResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [ConcreteBatchingPlants]
+      summary: Update a concrete batching plant by ID
+      description: Updates a single concrete batching plant identified by its internal UUID.
+      operationId: updateConcreteBatchingPlantById
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConcreteBatchingPlantInput'
+      responses:
+        '200':
+          description: Concrete batching plant updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConcreteBatchingPlantResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    delete:
+      tags: [ConcreteBatchingPlants]
+      summary: Delete a concrete batching plant by ID
+      description: |
+        Deletes a single concrete batching plant. Deletion will fail if the plant is linked
+        to supply costs, default supply suppliers, technical data, Abrams curves, or aggregate tests.
+      operationId: deleteConcreteBatchingPlantById
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      responses:
+        '200':
+          description: Concrete batching plant deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BaseResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /integrations/concretebatchingplants/by-external-id/{externalId}:
+    get:
+      tags: [ConcreteBatchingPlants]
+      summary: Get a concrete batching plant by external ID
+      description: Returns a single concrete batching plant identified by its external system reference.
+      operationId: getConcreteBatchingPlantByExternalId
+      parameters:
+        - $ref: '#/components/parameters/ExternalId'
+      responses:
+        '200':
+          description: Concrete batching plant found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConcreteBatchingPlantResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [ConcreteBatchingPlants]
+      summary: Update a concrete batching plant by external ID
+      description: Updates a single concrete batching plant identified by its external system reference.
+      operationId: updateConcreteBatchingPlantByExternalId
+      parameters:
+        - $ref: '#/components/parameters/ExternalId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConcreteBatchingPlantInput'
+      responses:
+        '200':
+          description: Concrete batching plant updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConcreteBatchingPlantResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    delete:
+      tags: [ConcreteBatchingPlants]
+      summary: Delete a concrete batching plant by external ID
+      description: Deletes a single concrete batching plant identified by its external system reference.
+      operationId: deleteConcreteBatchingPlantByExternalId
+      parameters:
+        - $ref: '#/components/parameters/ExternalId'
+      responses:
+        '200':
+          description: Concrete batching plant deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BaseResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  # ── Concrete Recipe Families ──
+  /integrations/concreterecipefamilies:
+    get:
+      tags: [ConcreteRecipeFamilies]
+      summary: List all concrete recipe families
+      description: |
+        Returns all concrete recipe families, optionally filtered by update date range.
+        If `end_updated_date` is not provided, defaults to the current timestamp.
+        A date range is required to retrieve all records.
+      operationId: listConcreteRecipeFamilies
+      parameters:
+        - $ref: '#/components/parameters/StartUpdatedDate'
+        - $ref: '#/components/parameters/EndUpdatedDate'
+      responses:
+        '200':
+          description: List of concrete recipe families
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConcreteRecipeFamilyListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /integrations/concreterecipefamilies/{id}:
+    get:
+      tags: [ConcreteRecipeFamilies]
+      summary: Get a concrete recipe family by ID
+      description: Returns a single concrete recipe family with its associated batching plant, product group, gravel, slump, and current version details.
+      operationId: getConcreteRecipeFamilyById
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      responses:
+        '200':
+          description: Concrete recipe family found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConcreteRecipeFamilyResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /integrations/concreterecipefamilies/by-external-id/{externalId}:
+    get:
+      tags: [ConcreteRecipeFamilies]
+      summary: Get a concrete recipe family by external ID
+      description: Returns a single concrete recipe family identified by its external system reference.
+      operationId: getConcreteRecipeFamilyByExternalId
+      parameters:
+        - $ref: '#/components/parameters/ExternalId'
+      responses:
+        '200':
+          description: Concrete recipe family found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConcreteRecipeFamilyResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ── Concrete Recipe Family Versions ──
+  /integrations/concreterecipefamilyversions/{id}:
+    get:
+      tags: [ConcreteRecipeFamilyVersions]
+      summary: Get a concrete recipe family version by ID
+      description: Returns a single concrete recipe family version with full nested characteristics and supply details.
+      operationId: getConcreteRecipeFamilyVersionById
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      responses:
+        '200':
+          description: Concrete recipe family version found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConcreteRecipeFamilyVersionPaginatedResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /integrations/concreterecipefamilyversions/by-created-date/:
+    get:
+      tags: [ConcreteRecipeFamilyVersions]
+      summary: List concrete recipe family versions by creation date
+      description: |
+        Returns paginated concrete recipe family versions filtered by creation date range.
+        The `start_created_date` parameter is required. If `end_created_date` is not provided,
+        defaults to the current timestamp.
+      operationId: listConcreteRecipeFamilyVersionsByCreatedDate
+      parameters:
+        - name: start_created_date
+          in: query
+          required: true
+          description: Start of the creation date range in ISO 8601 format
+          schema:
+            type: string
+            format: date-time
+          example: "2025-01-01T00:00:00"
+        - name: end_created_date
+          in: query
+          required: false
+          description: End of the creation date range in ISO 8601 format; defaults to current timestamp if omitted
+          schema:
+            type: string
+            format: date-time
+          example: "2025-12-31T23:59:59"
+      responses:
+        '200':
+          description: Paginated list of concrete recipe family versions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConcreteRecipeFamilyVersionPaginatedResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /integrations/concreterecipefamilyversions/by-updated-date/:
+    get:
+      tags: [ConcreteRecipeFamilyVersions]
+      summary: List concrete recipe family versions by update date
+      description: |
+        Returns paginated concrete recipe family versions filtered by update date range.
+        The `start_updated_date` parameter is required. If `end_updated_date` is not provided,
+        defaults to the current timestamp.
+      operationId: listConcreteRecipeFamilyVersionsByUpdatedDate
+      parameters:
+        - name: start_updated_date
+          in: query
+          required: true
+          description: Start of the update date range in ISO 8601 format
+          schema:
+            type: string
+            format: date-time
+          example: "2025-01-01T00:00:00"
+        - name: end_updated_date
+          in: query
+          required: false
+          description: End of the update date range in ISO 8601 format; defaults to current timestamp if omitted
+          schema:
+            type: string
+            format: date-time
+          example: "2025-12-31T23:59:59"
+      responses:
+        '200':
+          description: Paginated list of concrete recipe family versions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConcreteRecipeFamilyVersionPaginatedResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ── Concrete Recipes ──
+  /integrations/concreterecipes:
+    get:
+      tags: [ConcreteRecipes]
+      summary: List all concrete recipes
+      description: |
+        Returns all concrete recipes, optionally filtered by update date range.
+        A date range is required to retrieve all records.
+      operationId: listConcreteRecipes
+      parameters:
+        - $ref: '#/components/parameters/StartUpdatedDate'
+        - $ref: '#/components/parameters/EndUpdatedDate'
+      responses:
+        '200':
+          description: List of concrete recipes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConcreteRecipeListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /integrations/concreterecipes/{id}:
+    get:
+      tags: [ConcreteRecipes]
+      summary: Get a concrete recipe by ID
+      description: Returns a single concrete recipe with its associated gravel, slump, product group, and characteristics.
+      operationId: getConcreteRecipeById
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      responses:
+        '200':
+          description: Concrete recipe found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConcreteRecipeResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [ConcreteRecipes]
+      summary: Update a concrete recipe by ID
+      description: Updates a single concrete recipe. Currently only the `externalId` field can be set or changed.
+      operationId: updateConcreteRecipeById
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConcreteRecipeUpdateInput'
+            example:
+              externalId: EXT-CR-001
+      responses:
+        '200':
+          description: Concrete recipe updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConcreteRecipeResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /integrations/concreterecipes/by-external-id/{externalId}:
+    get:
+      tags: [ConcreteRecipes]
+      summary: Get a concrete recipe by external ID
+      description: Returns a single concrete recipe identified by its external system reference.
+      operationId: getConcreteRecipeByExternalId
+      parameters:
+        - $ref: '#/components/parameters/ExternalId'
+      responses:
+        '200':
+          description: Concrete recipe found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConcreteRecipeResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /integrations/concreterecipes/by-numeration/{numeration}:
+    get:
+      tags: [ConcreteRecipes]
+      summary: Get a concrete recipe by numeration
+      description: Returns a single concrete recipe identified by its sequential numeration value.
+      operationId: getConcreteRecipeByNumeration
+      parameters:
+        - name: numeration
+          in: path
+          required: true
+          description: Sequential numeration number assigned to the concrete recipe
+          schema:
+            type: integer
+          example: 42
+      responses:
+        '200':
+          description: Concrete recipe found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConcreteRecipeResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ── Cost Supplies ──
+  /integrations/costsupplies:
+    post:
+      tags: [CostSupplies]
+      summary: Create a new cost supply record
+      description: |
+        Creates a single cost supply record linking a supply to a supplier, batching plant,
+        and pricing information. Use either the entity ID or external ID to link child entities
+        (e.g., `concreteBatchingPlantId` or `concreteBatchingPlantExternalId`).
+      operationId: createCostSupply
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CostSupplyInput'
+            example:
+              active: true
+              costValue: 125.50
+              freightValue: 15.00
+              conversionFactor: 1.0
+              effectiveDate: "2025-03-01"
+              lossPercentage: 2.5
+              sandMoistureLevel: 0
+              externalId: EXT-CS-001
+              supplyExternalId: EXT-SUP-001
+              supplierExternalId: EXT-SUPPLIER-001
+              concreteBatchingPlantExternalId: EXT-CBP-001
+              purchaseMeasureUnitTypeExternalId: EXT-MUT-KG
+              useMeasureUnitTypeExternalId: EXT-MUT-KG
+      responses:
+        '201':
+          description: Cost supply created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CostSupplyResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        x-codeSamples:
+          - lang: curl
+            source: |
+              curl -X POST https://api.topconsuite.io/tech-hml/integrations/costsupplies \
+                -H "Authorization: Bearer <token>" \
+                -H "Ocp-Apim-Subscription-Key: <key>" \
+                -H "Content-Type: application/json" \
+                -d '{"active":true,"costValue":125.5,"freightValue":15.0,"conversionFactor":1.0,"effectiveDate":"2025-03-01","lossPercentage":2.5,"sandMoistureLevel":0,"externalId":"EXT-CS-001","supplyExternalId":"EXT-SUP-001","supplierExternalId":"EXT-SUPPLIER-001","concreteBatchingPlantExternalId":"EXT-CBP-001","purchaseMeasureUnitTypeExternalId":"EXT-MUT-KG","useMeasureUnitTypeExternalId":"EXT-MUT-KG"}'
+          - lang: javascript
+            source: |
+              const response = await fetch('https://api.topconsuite.io/tech-hml/integrations/costsupplies', {
+                method: 'POST',
+                headers: {
+                  'Authorization': 'Bearer <token>',
+                  'Ocp-Apim-Subscription-Key': '<key>',
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  active: true,
+                  costValue: 125.5,
+                  freightValue: 15.0,
+                  conversionFactor: 1.0,
+                  effectiveDate: '2025-03-01',
+                  lossPercentage: 2.5,
+                  sandMoistureLevel: 0,
+                  externalId: 'EXT-CS-001',
+                  supplyExternalId: 'EXT-SUP-001',
+                  supplierExternalId: 'EXT-SUPPLIER-001',
+                  concreteBatchingPlantExternalId: 'EXT-CBP-001',
+                  purchaseMeasureUnitTypeExternalId: 'EXT-MUT-KG',
+                  useMeasureUnitTypeExternalId: 'EXT-MUT-KG'
+                })
+              });
+
+              const data = await response.json();
+          - lang: csharp
+            source: |
+              using System.Net.Http;
+              using System.Net.Http.Headers;
+              using System.Net.Http.Json;
+
+              using var httpClient = new HttpClient();
+              httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", "<token>");
+              httpClient.DefaultRequestHeaders.Add("Ocp-Apim-Subscription-Key", "<key>");
+
+              var response = await httpClient.PostAsJsonAsync(
+                  "https://api.topconsuite.io/tech-hml/integrations/costsupplies",
+                  new
+                  {
+                      active = true,
+                      costValue = 125.5,
+                      freightValue = 15.0,
+                      conversionFactor = 1.0,
+                      effectiveDate = "2025-03-01",
+                      lossPercentage = 2.5,
+                      sandMoistureLevel = 0,
+                      externalId = "EXT-CS-001",
+                      supplyExternalId = "EXT-SUP-001",
+                      supplierExternalId = "EXT-SUPPLIER-001",
+                      concreteBatchingPlantExternalId = "EXT-CBP-001",
+                      purchaseMeasureUnitTypeExternalId = "EXT-MUT-KG",
+                      useMeasureUnitTypeExternalId = "EXT-MUT-KG"
+                  });
+
+              var payload = await response.Content.ReadAsStringAsync();
+          - lang: python
+            source: |
+              import requests
+
+              response = requests.post(
+                  'https://api.topconsuite.io/tech-hml/integrations/costsupplies',
+                  headers={
+                      'Authorization': 'Bearer <token>',
+                      'Ocp-Apim-Subscription-Key': '<key>'
+                  },
+                  json={
+                      'active': True,
+                      'costValue': 125.5,
+                      'freightValue': 15.0,
+                      'conversionFactor': 1.0,
+                      'effectiveDate': '2025-03-01',
+                      'lossPercentage': 2.5,
+                      'sandMoistureLevel': 0,
+                      'externalId': 'EXT-CS-001',
+                      'supplyExternalId': 'EXT-SUP-001',
+                      'supplierExternalId': 'EXT-SUPPLIER-001',
+                      'concreteBatchingPlantExternalId': 'EXT-CBP-001',
+                      'purchaseMeasureUnitTypeExternalId': 'EXT-MUT-KG',
+                      'useMeasureUnitTypeExternalId': 'EXT-MUT-KG'
+                  }
+              )
+
+              data = response.json()
+    get:
+      tags: [CostSupplies]
+      summary: List all cost supply records
+      description: |
+        Returns all cost supply records, optionally filtered by update date range.
+        A date range is required to retrieve all records.
+      operationId: listCostSupplies
+      parameters:
+        - $ref: '#/components/parameters/StartUpdatedDate'
+        - $ref: '#/components/parameters/EndUpdatedDate'
+      responses:
+        '200':
+          description: List of cost supply records
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CostSupplyListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /integrations/costsupplies/{id}:
+    get:
+      tags: [CostSupplies]
+      summary: Get a cost supply record by ID
+      description: Returns a single cost supply record with nested batching plant, supplier, supply, and measure unit details.
+      operationId: getCostSupplyById
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      responses:
+        '200':
+          description: Cost supply record found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CostSupplyResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [CostSupplies]
+      summary: Update a cost supply record by ID
+      description: Updates a single cost supply record identified by its internal UUID.
+      operationId: updateCostSupplyById
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CostSupplyInput'
+      responses:
+        '200':
+          description: Cost supply record updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CostSupplyResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [CostSupplies]
+      summary: Delete a cost supply record by ID
+      description: Deletes a single cost supply record identified by its internal UUID.
+      operationId: deleteCostSupplyById
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      responses:
+        '200':
+          description: Cost supply record deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BaseResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /integrations/costsupplies/by-external-id/{externalId}:
+    get:
+      tags: [CostSupplies]
+      summary: Get a cost supply record by external ID
+      description: Returns a single cost supply record identified by its external system reference.
+      operationId: getCostSupplyByExternalId
+      parameters:
+        - $ref: '#/components/parameters/ExternalId'
+      responses:
+        '200':
+          description: Cost supply record found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CostSupplyResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [CostSupplies]
+      summary: Update a cost supply record by external ID
+      description: Updates a single cost supply record identified by its external system reference.
+      operationId: updateCostSupplyByExternalId
+      parameters:
+        - $ref: '#/components/parameters/ExternalId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CostSupplyInput'
+      responses:
+        '200':
+          description: Cost supply record updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CostSupplyResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [CostSupplies]
+      summary: Delete a cost supply record by external ID
+      description: Deletes a single cost supply record identified by its external system reference.
+      operationId: deleteCostSupplyByExternalId
+      parameters:
+        - $ref: '#/components/parameters/ExternalId'
+      responses:
+        '200':
+          description: Cost supply record deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BaseResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ── Identification Document Types ──
+  /integrations/identificationdocumenttype:
+    get:
+      tags: [IdentificationDocumentTypes]
+      summary: List all identification document types
+      description: Returns all registered identification document types (e.g., CPF, CNPJ).
+      operationId: listIdentificationDocumentTypes
+      responses:
+        '200':
+          description: List of identification document types
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdentificationDocumentTypeListResponse'
+              example:
+                status: success
+                message: Records retrieved successfully
+                result:
+                  - id: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                    name: CPF
+                    description: Brazilian Individual Taxpayer Registry
+                    mask: "###.###.###-##"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /integrations/identificationdocumenttype/{id}:
+    get:
+      tags: [IdentificationDocumentTypes]
+      summary: Get an identification document type by ID
+      description: Returns a single identification document type identified by its internal UUID.
+      operationId: getIdentificationDocumentTypeById
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      responses:
+        '200':
+          description: Identification document type found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdentificationDocumentTypeResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ── Measure Unit Types ──
+  /integrations/measureunittypes:
+    post:
+      tags: [MeasureUnitTypes]
+      summary: Create a new measure unit type
+      description: |
+        Creates a single measure unit type. The `abbreviation` and `externalId` fields must be unique.
+      operationId: createMeasureUnitType
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MeasureUnitTypeInput'
+            example:
+              description: Kilogram
+              abbreviation: KG
+              externalId: EXT-MUT-KG
+              active: true
+      responses:
+        '201':
+          description: Measure unit type created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeasureUnitTypeResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    get:
+      tags: [MeasureUnitTypes]
+      summary: List all measure unit types
+      description: |
+        Returns all measure unit types, optionally filtered by update date range.
+        If neither date is provided, all records are returned.
+      operationId: listMeasureUnitTypes
+      parameters:
+        - $ref: '#/components/parameters/StartUpdatedDate'
+        - $ref: '#/components/parameters/EndUpdatedDate'
+      responses:
+        '200':
+          description: List of measure unit types
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeasureUnitTypeListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /integrations/measureunittypes/{id}:
+    get:
+      tags: [MeasureUnitTypes]
+      summary: Get a measure unit type by ID
+      description: Returns a single measure unit type identified by its internal UUID.
+      operationId: getMeasureUnitTypeById
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      responses:
+        '200':
+          description: Measure unit type found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeasureUnitTypeResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [MeasureUnitTypes]
+      summary: Update a measure unit type by ID
+      description: Updates a single measure unit type identified by its internal UUID.
+      operationId: updateMeasureUnitTypeById
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MeasureUnitTypeInput'
+      responses:
+        '200':
+          description: Measure unit type updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeasureUnitTypeResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [MeasureUnitTypes]
+      summary: Delete a measure unit type by ID
+      description: Deletes a single measure unit type identified by its internal UUID.
+      operationId: deleteMeasureUnitTypeById
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      responses:
+        '200':
+          description: Measure unit type deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BaseResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /integrations/measureunittypes/by-external-id/{externalId}:
+    get:
+      tags: [MeasureUnitTypes]
+      summary: Get a measure unit type by external ID
+      description: Returns a single measure unit type identified by its external system reference.
+      operationId: getMeasureUnitTypeByExternalId
+      parameters:
+        - $ref: '#/components/parameters/ExternalId'
+      responses:
+        '200':
+          description: Measure unit type found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeasureUnitTypeResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [MeasureUnitTypes]
+      summary: Update a measure unit type by external ID
+      description: Updates a single measure unit type identified by its external system reference.
+      operationId: updateMeasureUnitTypeByExternalId
+      parameters:
+        - $ref: '#/components/parameters/ExternalId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MeasureUnitTypeInput'
+      responses:
+        '200':
+          description: Measure unit type updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeasureUnitTypeResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [MeasureUnitTypes]
+      summary: Delete a measure unit type by external ID
+      description: Deletes a single measure unit type identified by its external system reference.
+      operationId: deleteMeasureUnitTypeByExternalId
+      parameters:
+        - $ref: '#/components/parameters/ExternalId'
+      responses:
+        '200':
+          description: Measure unit type deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BaseResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ── Suppliers ──
+  /integrations/suppliers:
+    post:
+      tags: [Suppliers]
+      summary: Create a new supplier
+      description: |
+        Creates a single supplier record. The `externalId` and `documentNumber` fields must be
+        unique. Link the supplier's document type using `identificationDocumentTypeId`.
+      operationId: createSupplier
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SupplierInput'
+            example:
+              name: Cimento Nacional S.A.
+              company: Cimento Nacional S.A.
+              documentNumber: "12345678000199"
+              externalId: EXT-SUPPLIER-001
+              identificationDocumentTypeId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+              active: true
+      responses:
+        '201':
+          description: Supplier created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SupplierResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    get:
+      tags: [Suppliers]
+      summary: List all suppliers
+      description: |
+        Returns all suppliers, optionally filtered by update date range.
+        A date range is required to retrieve all records.
+      operationId: listSuppliers
+      parameters:
+        - $ref: '#/components/parameters/StartUpdatedDate'
+        - $ref: '#/components/parameters/EndUpdatedDate'
+      responses:
+        '200':
+          description: List of suppliers
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SupplierListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /integrations/suppliers/{id}:
+    get:
+      tags: [Suppliers]
+      summary: Get a supplier by ID
+      description: Returns a single supplier with its associated identification document type.
+      operationId: getSupplierById
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      responses:
+        '200':
+          description: Supplier found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SupplierResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [Suppliers]
+      summary: Update a supplier by ID
+      description: Updates a single supplier identified by its internal UUID.
+      operationId: updateSupplierById
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SupplierInput'
+      responses:
+        '200':
+          description: Supplier updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SupplierResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /integrations/suppliers/by-external-id/{externalId}:
+    get:
+      tags: [Suppliers]
+      summary: Get a supplier by external ID
+      description: Returns a single supplier identified by its external system reference.
+      operationId: getSupplierByExternalId
+      parameters:
+        - $ref: '#/components/parameters/ExternalId'
+      responses:
+        '200':
+          description: Supplier found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SupplierResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [Suppliers]
+      summary: Update a supplier by external ID
+      description: Updates a single supplier identified by its external system reference.
+      operationId: updateSupplierByExternalId
+      parameters:
+        - $ref: '#/components/parameters/ExternalId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SupplierInput'
+      responses:
+        '200':
+          description: Supplier updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SupplierResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ── Supplies ──
+  /integrations/supplies:
+    post:
+      tags: [Supplies]
+      summary: Create a new supply
+      description: |
+        Creates a single supply (material) record. The `name`, `abbreviation`, and `externalId`
+        fields must be unique. Optionally link to a classification supply type using either
+        `classificationSupplyTypeId` or `classificationSupplyTypeExternalId`.
+      operationId: createSupply
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SupplyInput'
+            example:
+              name: Sand Type A
+              abbreviation: SND-A
+              group: FINE_AGGREGATE
+              externalId: EXT-SUP-001
+              composeMortar: true
+              active: true
+      responses:
+        '201':
+          description: Supply created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SupplyResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        x-codeSamples:
+          - lang: curl
+            source: |
+              curl -X POST https://api.topconsuite.io/tech-hml/integrations/supplies \
+                -H "Authorization: Bearer <token>" \
+                -H "Ocp-Apim-Subscription-Key: <key>" \
+                -H "Content-Type: application/json" \
+                -d '{"name":"Sand Type A","abbreviation":"SND-A","group":"FINE_AGGREGATE","externalId":"EXT-SUP-001","composeMortar":true,"active":true}'
+          - lang: javascript
+            source: |
+              const response = await fetch('https://api.topconsuite.io/tech-hml/integrations/supplies', {
+                method: 'POST',
+                headers: {
+                  'Authorization': 'Bearer <token>',
+                  'Ocp-Apim-Subscription-Key': '<key>',
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  name: 'Sand Type A',
+                  abbreviation: 'SND-A',
+                  group: 'FINE_AGGREGATE',
+                  externalId: 'EXT-SUP-001',
+                  composeMortar: true,
+                  active: true
+                })
+              });
+
+              const data = await response.json();
+          - lang: csharp
+            source: |
+              using System.Net.Http;
+              using System.Net.Http.Headers;
+              using System.Net.Http.Json;
+
+              using var httpClient = new HttpClient();
+              httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", "<token>");
+              httpClient.DefaultRequestHeaders.Add("Ocp-Apim-Subscription-Key", "<key>");
+
+              var response = await httpClient.PostAsJsonAsync(
+                  "https://api.topconsuite.io/tech-hml/integrations/supplies",
+                  new
+                  {
+                      name = "Sand Type A",
+                      abbreviation = "SND-A",
+                      group = "FINE_AGGREGATE",
+                      externalId = "EXT-SUP-001",
+                      composeMortar = true,
+                      active = true
+                  });
+
+              var payload = await response.Content.ReadAsStringAsync();
+          - lang: python
+            source: |
+              import requests
+
+              response = requests.post(
+                  'https://api.topconsuite.io/tech-hml/integrations/supplies',
+                  headers={
+                      'Authorization': 'Bearer <token>',
+                      'Ocp-Apim-Subscription-Key': '<key>'
+                  },
+                  json={
+                      'name': 'Sand Type A',
+                      'abbreviation': 'SND-A',
+                      'group': 'FINE_AGGREGATE',
+                      'externalId': 'EXT-SUP-001',
+                      'composeMortar': True,
+                      'active': True
+                  }
+              )
+
+              data = response.json()
+    get:
+      tags: [Supplies]
+      summary: List all supplies
+      description: |
+        Returns all supplies, optionally filtered by update date range.
+        A date range is required to retrieve all records.
+      operationId: listSupplies
+      parameters:
+        - $ref: '#/components/parameters/StartUpdatedDate'
+        - $ref: '#/components/parameters/EndUpdatedDate'
+      responses:
+        '200':
+          description: List of supplies
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SupplyListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /integrations/supplies/{id}:
+    get:
+      tags: [Supplies]
+      summary: Get a supply by ID
+      description: Returns a single supply with its associated classification supply type.
+      operationId: getSupplyById
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      responses:
+        '200':
+          description: Supply found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SupplyResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [Supplies]
+      summary: Update a supply by ID
+      description: Updates a single supply identified by its internal UUID.
+      operationId: updateSupplyById
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SupplyInput'
+      responses:
+        '200':
+          description: Supply updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SupplyResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /integrations/supplies/by-external-id/{externalId}:
+    get:
+      tags: [Supplies]
+      summary: Get a supply by external ID
+      description: Returns a single supply identified by its external system reference.
+      operationId: getSupplyByExternalId
+      parameters:
+        - $ref: '#/components/parameters/ExternalId'
+      responses:
+        '200':
+          description: Supply found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SupplyResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [Supplies]
+      summary: Update a supply by external ID
+      description: Updates a single supply identified by its external system reference.
+      operationId: updateSupplyByExternalId
+      parameters:
+        - $ref: '#/components/parameters/ExternalId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SupplyInput'
+      responses:
+        '200':
+          description: Supply updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SupplyResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /integrations/supplies/by-numeration/{numeration}:
+    get:
+      tags: [Supplies]
+      summary: Get a supply by numeration
+      description: Returns a single supply identified by its sequential numeration value.
+      operationId: getSupplyByNumeration
+      parameters:
+        - name: numeration
+          in: path
+          required: true
+          description: Sequential numeration number assigned to the supply
+          schema:
+            type: integer
+          example: 15
+      responses:
+        '200':
+          description: Supply found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SupplyResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ── Technical Data Supplies ──
+  /integrations/technicaldatasupplies:
+    post:
+      tags: [TechnicalDataSupplies]
+      summary: Create a new technical data supply record
+      description: |
+        Creates a single technical data supply record linking a supply's technical specifications
+        to a batching plant and supplier. The combination of supply, batching plant, supplier,
+        and effective date must be unique.
+      operationId: createTechnicalDataSupply
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TechnicalDataSupplyInput'
+            example:
+              specificMass: 2650.0
+              unitMass: 1520.0
+              effectiveDate: "2025-03-01"
+              isDefaultSupplySupplier: true
+              active: true
+              externalId: EXT-TDS-001
+              supplyExternalId: EXT-SUP-001
+              supplierExternalId: EXT-SUPPLIER-001
+              concreteBatchingPlantExternalId: EXT-CBP-001
+      responses:
+        '201':
+          description: Technical data supply record created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TechnicalDataSupplyResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        x-codeSamples:
+          - lang: curl
+            source: |
+              curl -X POST https://api.topconsuite.io/tech-hml/integrations/technicaldatasupplies \
+                -H "Authorization: Bearer <token>" \
+                -H "Ocp-Apim-Subscription-Key: <key>" \
+                -H "Content-Type: application/json" \
+                -d '{"specificMass":2650.0,"unitMass":1520.0,"effectiveDate":"2025-03-01","isDefaultSupplySupplier":true,"active":true,"externalId":"EXT-TDS-001","supplyExternalId":"EXT-SUP-001","supplierExternalId":"EXT-SUPPLIER-001","concreteBatchingPlantExternalId":"EXT-CBP-001"}'
+          - lang: javascript
+            source: |
+              const response = await fetch('https://api.topconsuite.io/tech-hml/integrations/technicaldatasupplies', {
+                method: 'POST',
+                headers: {
+                  'Authorization': 'Bearer <token>',
+                  'Ocp-Apim-Subscription-Key': '<key>',
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  specificMass: 2650.0,
+                  unitMass: 1520.0,
+                  effectiveDate: '2025-03-01',
+                  isDefaultSupplySupplier: true,
+                  active: true,
+                  externalId: 'EXT-TDS-001',
+                  supplyExternalId: 'EXT-SUP-001',
+                  supplierExternalId: 'EXT-SUPPLIER-001',
+                  concreteBatchingPlantExternalId: 'EXT-CBP-001'
+                })
+              });
+
+              const data = await response.json();
+          - lang: csharp
+            source: |
+              using System.Net.Http;
+              using System.Net.Http.Headers;
+              using System.Net.Http.Json;
+
+              using var httpClient = new HttpClient();
+              httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", "<token>");
+              httpClient.DefaultRequestHeaders.Add("Ocp-Apim-Subscription-Key", "<key>");
+
+              var response = await httpClient.PostAsJsonAsync(
+                  "https://api.topconsuite.io/tech-hml/integrations/technicaldatasupplies",
+                  new
+                  {
+                      specificMass = 2650.0,
+                      unitMass = 1520.0,
+                      effectiveDate = "2025-03-01",
+                      isDefaultSupplySupplier = true,
+                      active = true,
+                      externalId = "EXT-TDS-001",
+                      supplyExternalId = "EXT-SUP-001",
+                      supplierExternalId = "EXT-SUPPLIER-001",
+                      concreteBatchingPlantExternalId = "EXT-CBP-001"
+                  });
+
+              var payload = await response.Content.ReadAsStringAsync();
+          - lang: python
+            source: |
+              import requests
+
+              response = requests.post(
+                  'https://api.topconsuite.io/tech-hml/integrations/technicaldatasupplies',
+                  headers={
+                      'Authorization': 'Bearer <token>',
+                      'Ocp-Apim-Subscription-Key': '<key>'
+                  },
+                  json={
+                      'specificMass': 2650.0,
+                      'unitMass': 1520.0,
+                      'effectiveDate': '2025-03-01',
+                      'isDefaultSupplySupplier': True,
+                      'active': True,
+                      'externalId': 'EXT-TDS-001',
+                      'supplyExternalId': 'EXT-SUP-001',
+                      'supplierExternalId': 'EXT-SUPPLIER-001',
+                      'concreteBatchingPlantExternalId': 'EXT-CBP-001'
+                  }
+              )
+
+              data = response.json()
+    get:
+      tags: [TechnicalDataSupplies]
+      summary: List all technical data supply records
+      description: |
+        Returns all technical data supply records, optionally filtered by update date range.
+        A date range is required to retrieve all records.
+      operationId: listTechnicalDataSupplies
+      parameters:
+        - $ref: '#/components/parameters/StartUpdatedDate'
+        - $ref: '#/components/parameters/EndUpdatedDate'
+      responses:
+        '200':
+          description: List of technical data supply records
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TechnicalDataSupplyListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /integrations/technicaldatasupplies/{id}:
+    get:
+      tags: [TechnicalDataSupplies]
+      summary: Get a technical data supply record by ID
+      description: Returns a single technical data supply record with nested batching plant, supplier, and supply details.
+      operationId: getTechnicalDataSupplyById
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      responses:
+        '200':
+          description: Technical data supply record found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TechnicalDataSupplyResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [TechnicalDataSupplies]
+      summary: Update a technical data supply record by ID
+      description: Updates a single technical data supply record identified by its internal UUID.
+      operationId: updateTechnicalDataSupplyById
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TechnicalDataSupplyInput'
+      responses:
+        '200':
+          description: Technical data supply record updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TechnicalDataSupplyResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [TechnicalDataSupplies]
+      summary: Delete a technical data supply record by ID
+      description: |
+        Deletes a single technical data supply record. Deletion will fail if the record
+        is linked to other technical data supply records in the system.
+      operationId: deleteTechnicalDataSupplyById
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      responses:
+        '200':
+          description: Technical data supply record deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BaseResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /integrations/technicaldatasupplies/by-external-id/{externalId}:
+    get:
+      tags: [TechnicalDataSupplies]
+      summary: Get a technical data supply record by external ID
+      description: Returns a single technical data supply record identified by its external system reference.
+      operationId: getTechnicalDataSupplyByExternalId
+      parameters:
+        - $ref: '#/components/parameters/ExternalId'
+      responses:
+        '200':
+          description: Technical data supply record found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TechnicalDataSupplyResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [TechnicalDataSupplies]
+      summary: Update a technical data supply record by external ID
+      description: Updates a single technical data supply record identified by its external system reference.
+      operationId: updateTechnicalDataSupplyByExternalId
+      parameters:
+        - $ref: '#/components/parameters/ExternalId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TechnicalDataSupplyInput'
+      responses:
+        '200':
+          description: Technical data supply record updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TechnicalDataSupplyResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [TechnicalDataSupplies]
+      summary: Delete a technical data supply record by external ID
+      description: Deletes a single technical data supply record identified by its external system reference.
+      operationId: deleteTechnicalDataSupplyByExternalId
+      parameters:
+        - $ref: '#/components/parameters/ExternalId'
+      responses:
+        '200':
+          description: Technical data supply record deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BaseResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Bearer token obtained from the token generation endpoint (single-tenant environments)
+    SubscriptionKey:
+      type: apiKey
+      in: header
+      name: Ocp-Apim-Subscription-Key
+      description: API subscription key provided by Topcon for multi-tenant environments
+
+  parameters:
+    ResourceId:
+      name: id
+      in: path
+      required: true
+      description: Internal UUID of the resource
+      schema:
+        type: string
+        format: uuid
+      example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+
+    ExternalId:
+      name: externalId
+      in: path
+      required: true
+      description: External system reference identifier used to link records between systems
+      schema:
+        type: string
+        maxLength: 100
+      example: EXT-001
+
+    StartUpdatedDate:
+      name: start_updated_date
+      in: query
+      required: false
+      description: Start of the update date filter range in ISO 8601 format (`YYYY-MM-DDThh:mm:ss`)
+      schema:
+        type: string
+        format: date-time
+      example: "2025-01-01T00:00:00"
+
+    EndUpdatedDate:
+      name: end_updated_date
+      in: query
+      required: false
+      description: End of the update date filter range in ISO 8601 format; defaults to the current timestamp if omitted
+      schema:
+        type: string
+        format: date-time
+      example: "2025-12-31T23:59:59"
+
+  responses:
+    ValidationError:
+      description: Request body failed validation
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            status: error
+            message: Validation failed
+            errorCode: "400"
+            notifications:
+              - "name: Maximum 50 characters"
+
+    Unauthorized:
+      description: Authentication credentials are missing or invalid
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            status: error
+            message: Unauthorized access
+            errorCode: "401"
+
+    Forbidden:
+      description: The authenticated user does not have permission to perform this action
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            status: error
+            message: Insufficient permissions
+            errorCode: "403"
+
+    NotFound:
+      description: The requested resource was not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            status: error
+            message: Resource not found
+            errorCode: "404"
+
+    Conflict:
+      description: The request conflicts with the current state of the resource (e.g., duplicate unique field or resource in use)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            status: error
+            message: External ID already exists
+            errorCode: "409"
+
+  schemas:
+    # ── Base Envelope ──
+    BaseResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [success, alert, error]
+          description: Status of the executed process
+          example: success
+        message:
+          type: string
+          description: Human-readable message regarding the result of the process
+          example: Operation completed successfully
+
+    ErrorResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [success, alert, error]
+          description: Status of the executed process
+          example: error
+        message:
+          type: string
+          description: Human-readable message regarding the error
+          example: Validation failed
+        errorCode:
+          type: string
+          description: Machine-readable error code for programmatic handling
+          example: "1.4.1"
+        notifications:
+          type: array
+          items:
+            type: string
+          description: List of detailed validation error messages
+          example: ["name: Maximum 50 characters"]
+
+    # ── Authentication ──
+    TokenRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          description: Admin user login email address
+          example: admin@company.com
+        password:
+          type: string
+          format: password
+          description: Admin user login password
+          example: securePassword123
+
+    TokenUpdateRequest:
+      type: object
+      required: [email, password, active]
+      properties:
+        email:
+          type: string
+          format: email
+          description: Email of the user who originally created the token
+          example: admin@company.com
+        password:
+          type: string
+          format: password
+          description: Password of the user who originally created the token
+          example: securePassword123
+        active:
+          type: boolean
+          description: Set to **false** to revoke the token or **true** to reactivate it
+          example: false
+
+    TokenResponse:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          properties:
+            result:
+              type: object
+              properties:
+                token:
+                  type: string
+                  description: Generated Bearer token for API authentication
+                  example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U
+
+    # ── Classification Supply Type ──
+    SupplyGroup:
+      type: string
+      enum: [ADDITIONS, ADDITIVE, BINDER, COARSE_AGGREGATE, FINE_AGGREGATE, WATER]
+      description: Material group classification for the supply
+      example: BINDER
+
+    ClassificationSupplyTypeInput:
+      type: object
+      required: [name, group, externalId]
+      properties:
+        name:
+          type: string
+          maxLength: 50
+          description: Name of the classification supply type
+          example: Portland Cement CP-V
+        group:
+          $ref: '#/components/schemas/SupplyGroup'
+        externalId:
+          type: string
+          maxLength: 100
+          description: Unique external system reference for linking between systems (required on creation only)
+          example: EXT-CST-001
+        active:
+          type: boolean
+          description: Whether the classification supply type is active
+          default: true
+          example: true
+
+    ClassificationSupplyType:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique internal identifier of the classification supply type
+          example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+        name:
+          type: string
+          maxLength: 50
+          description: Name of the classification supply type
+          example: Portland Cement CP-V
+        group:
+          $ref: '#/components/schemas/SupplyGroup'
+        active:
+          type: boolean
+          description: Whether the classification supply type is active
+          example: true
+        externalId:
+          type: string
+          maxLength: 100
+          description: External system reference identifier
+          example: EXT-CST-001
+        createdAt:
+          type: string
+          format: date-time
+          description: Timestamp when the record was created
+          example: "2025-01-15T10:30:00"
+        updatedAt:
+          type: string
+          format: date-time
+          description: Timestamp when the record was last updated
+          example: "2025-01-15T10:30:00"
+
+    ClassificationSupplyTypeResponse:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          properties:
+            result:
+              $ref: '#/components/schemas/ClassificationSupplyType'
+
+    ClassificationSupplyTypeListResponse:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          properties:
+            result:
+              type: array
+              items:
+                $ref: '#/components/schemas/ClassificationSupplyType'
+
+    # ── Concrete Batching Plant ──
+    ConcreteBatchingPlantInput:
+      type: object
+      required: [name, abbreviation, code, externalId]
+      properties:
+        name:
+          type: string
+          maxLength: 50
+          description: Name of the concrete batching plant
+          example: Central Plant Alpha
+        abbreviation:
+          type: string
+          maxLength: 3
+          description: Short abbreviation code for the batching plant (must be unique)
+          example: CPA
+        code:
+          type: string
+          maxLength: 10
+          description: Unique code identifier for the batching plant
+          example: PLANT-001
+        externalId:
+          type: string
+          maxLength: 100
+          description: Unique external system reference (required on creation only)
+          example: EXT-CBP-001
+        active:
+          type: boolean
+          description: Whether the batching plant is active
+          default: true
+          example: true
+
+    ConcreteBatchingPlant:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique internal identifier of the concrete batching plant
+          example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+        name:
+          type: string
+          maxLength: 50
+          description: Name of the concrete batching plant
+          example: Central Plant Alpha
+        abbreviation:
+          type: string
+          maxLength: 3
+          description: Short abbreviation code
+          example: CPA
+        code:
+          type: string
+          maxLength: 10
+          description: Unique code identifier
+          example: PLANT-001
+        active:
+          type: boolean
+          description: Whether the batching plant is active
+          example: true
+        externalId:
+          type: string
+          maxLength: 100
+          description: External system reference identifier
+          example: EXT-CBP-001
+        createdAt:
+          type: string
+          format: date-time
+          description: Timestamp when the record was created
+          example: "2025-01-15T10:30:00"
+        updatedAt:
+          type: string
+          format: date-time
+          description: Timestamp when the record was last updated
+          example: "2025-01-15T10:30:00"
+
+    ConcreteBatchingPlantResponse:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          properties:
+            result:
+              $ref: '#/components/schemas/ConcreteBatchingPlant'
+
+    ConcreteBatchingPlantListResponse:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          properties:
+            result:
+              type: array
+              items:
+                $ref: '#/components/schemas/ConcreteBatchingPlant'
+
+    # ── Identification Document Type ──
+    IdentificationDocumentType:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique internal identifier of the identification document type
+          example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+        name:
+          type: string
+          maxLength: 50
+          description: Short name of the document type (e.g., CPF, CNPJ)
+          example: CNPJ
+        description:
+          type: string
+          maxLength: 150
+          description: Full description of the document type
+          example: Brazilian National Registry of Legal Entities
+        mask:
+          type: string
+          maxLength: 100
+          description: Input mask pattern for the document number
+          example: "##.###.###/####-##"
+
+    IdentificationDocumentTypeResponse:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          properties:
+            result:
+              $ref: '#/components/schemas/IdentificationDocumentType'
+
+    IdentificationDocumentTypeListResponse:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          properties:
+            result:
+              type: array
+              items:
+                $ref: '#/components/schemas/IdentificationDocumentType'
+
+    # ── Measure Unit Type ──
+    MeasureUnitTypeInput:
+      type: object
+      required: [description, abbreviation, externalId]
+      properties:
+        description:
+          type: string
+          maxLength: 50
+          description: Full description of the measure unit type
+          example: Kilogram
+        abbreviation:
+          type: string
+          maxLength: 3
+          description: Short abbreviation for the unit (must be unique)
+          example: KG
+        externalId:
+          type: string
+          maxLength: 100
+          description: Unique external system reference (required on creation only)
+          example: EXT-MUT-KG
+        active:
+          type: boolean
+          description: Whether the measure unit type is active
+          default: true
+          example: true
+
+    MeasureUnitType:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique internal identifier of the measure unit type
+          example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+        description:
+          type: string
+          maxLength: 50
+          description: Full description of the measure unit type
+          example: Kilogram
+        abbreviation:
+          type: string
+          maxLength: 3
+          description: Short abbreviation for the unit
+          example: KG
+        active:
+          type: boolean
+          description: Whether the measure unit type is active
+          example: true
+        fixed:
+          type: boolean
+          description: Whether this is a system-defined (non-editable) unit type
+          example: false
+        externalId:
+          type: string
+          maxLength: 100
+          description: External system reference identifier
+          example: EXT-MUT-KG
+        createdAt:
+          type: string
+          format: date-time
+          description: Timestamp when the record was created
+          example: "2025-01-15T10:30:00"
+        updatedAt:
+          type: string
+          format: date-time
+          description: Timestamp when the record was last updated
+          example: "2025-01-15T10:30:00"
+
+    MeasureUnitTypeResponse:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          properties:
+            result:
+              $ref: '#/components/schemas/MeasureUnitType'
+
+    MeasureUnitTypeListResponse:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          properties:
+            result:
+              type: array
+              items:
+                $ref: '#/components/schemas/MeasureUnitType'
+
+    # ── Supplier ──
+    SupplierInput:
+      type: object
+      required: [name, company, documentNumber, externalId, identificationDocumentTypeId]
+      properties:
+        name:
+          type: string
+          maxLength: 50
+          description: Supplier's trade name
+          example: Cimento Nacional S.A.
+        company:
+          type: string
+          maxLength: 100
+          description: Supplier's full corporate name
+          example: Cimento Nacional S.A.
+        documentNumber:
+          type: string
+          maxLength: 100
+          description: Supplier's identification document number (e.g., CNPJ or CPF)
+          example: "12345678000199"
+        externalId:
+          type: string
+          maxLength: 100
+          description: Unique external system reference (required on creation only)
+          example: EXT-SUPPLIER-001
+        identificationDocumentTypeId:
+          type: string
+          format: uuid
+          description: UUID of the identification document type (e.g., CPF or CNPJ)
+          example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+        active:
+          type: boolean
+          description: Whether the supplier is active
+          default: true
+          example: true
+
+    Supplier:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique internal identifier of the supplier
+          example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+        name:
+          type: string
+          maxLength: 50
+          description: Supplier's trade name
+          example: Cimento Nacional S.A.
+        company:
+          type: string
+          maxLength: 100
+          description: Supplier's full corporate name
+          example: Cimento Nacional S.A.
+        documentNumber:
+          type: string
+          maxLength: 100
+          description: Supplier's identification document number
+          example: "12345678000199"
+        active:
+          type: boolean
+          description: Whether the supplier is active
+          example: true
+        externalId:
+          type: string
+          maxLength: 130
+          description: External system reference identifier
+          example: EXT-SUPPLIER-001
+        identificationDocumentType:
+          $ref: '#/components/schemas/IdentificationDocumentType'
+        createdAt:
+          type: string
+          format: date-time
+          description: Timestamp when the record was created
+          example: "2025-01-15T10:30:00"
+        updatedAt:
+          type: string
+          format: date-time
+          description: Timestamp when the record was last updated
+          example: "2025-01-15T10:30:00"
+
+    SupplierResponse:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          properties:
+            result:
+              $ref: '#/components/schemas/Supplier'
+
+    SupplierListResponse:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          properties:
+            result:
+              type: array
+              items:
+                $ref: '#/components/schemas/Supplier'
+
+    # ── Supply ──
+    SupplyInput:
+      type: object
+      required: [name, abbreviation, group, externalId]
+      properties:
+        name:
+          type: string
+          maxLength: 50
+          description: Name of the supply material
+          example: Sand Type A
+        abbreviation:
+          type: string
+          maxLength: 10
+          description: Short abbreviation for the supply (must be unique)
+          example: SND-A
+        group:
+          $ref: '#/components/schemas/SupplyGroup'
+        externalId:
+          type: string
+          maxLength: 100
+          description: Unique external system reference (required on creation only)
+          example: EXT-SUP-001
+        composeMortar:
+          type: boolean
+          description: Whether this supply is a component of mortar
+          default: true
+          example: true
+        active:
+          type: boolean
+          description: Whether the supply is active
+          default: true
+          example: true
+        classificationSupplyTypeId:
+          type: string
+          format: uuid
+          description: UUID of the classification supply type to associate (alternative to `classificationSupplyTypeExternalId`)
+          example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+        classificationSupplyTypeExternalId:
+          type: string
+          description: External ID of the classification supply type to associate (alternative to `classificationSupplyTypeId`)
+          example: EXT-CST-001
+
+    Supply:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique internal identifier of the supply
+          example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+        numeration:
+          type: integer
+          description: System-generated sequential number for the supply
+          example: 15
+        name:
+          type: string
+          maxLength: 50
+          description: Name of the supply material
+          example: Sand Type A
+        abbreviation:
+          type: string
+          maxLength: 10
+          description: Short abbreviation for the supply
+          example: SND-A
+        active:
+          type: boolean
+          description: Whether the supply is active
+          example: true
+        composeMortar:
+          type: boolean
+          description: Whether this supply is a component of mortar
+          example: true
+        externalId:
+          type: string
+          maxLength: 100
+          description: External system reference identifier
+          example: EXT-SUP-001
+        group:
+          $ref: '#/components/schemas/SupplyGroup'
+        classificationSupplyType:
+          $ref: '#/components/schemas/ClassificationSupplyType'
+        createdAt:
+          type: string
+          format: date-time
+          description: Timestamp when the record was created
+          example: "2025-01-15T10:30:00"
+        updatedAt:
+          type: string
+          format: date-time
+          description: Timestamp when the record was last updated
+          example: "2025-01-15T10:30:00"
+
+    SupplyResponse:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          properties:
+            result:
+              $ref: '#/components/schemas/Supply'
+
+    SupplyListResponse:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          properties:
+            result:
+              type: array
+              items:
+                $ref: '#/components/schemas/Supply'
+
+    # ── Cost Supply ──
+    CostSupplyInput:
+      type: object
+      required: [costValue, freightValue, conversionFactor, effectiveDate, externalId]
+      properties:
+        active:
+          type: boolean
+          description: Whether the cost supply record is active
+          default: true
+          example: true
+        costValue:
+          type: number
+          format: double
+          description: Supply cost value per unit
+          example: 125.50
+        freightValue:
+          type: number
+          format: double
+          description: Shipping/freight value per unit
+          example: 15.00
+        conversionFactor:
+          type: number
+          format: double
+          description: Conversion factor between purchase and usage units
+          example: 1.0
+        effectiveDate:
+          type: string
+          format: date
+          description: Date when this cost becomes effective
+          example: "2025-03-01"
+        lossPercentage:
+          type: number
+          format: double
+          description: Percentage of supply loss during the production process
+          default: 0
+          example: 2.5
+        sandMoistureLevel:
+          type: number
+          format: double
+          description: Moisture percentage of the supply material
+          default: 0
+          example: 0
+        externalId:
+          type: string
+          maxLength: 100
+          description: Unique external system reference (required on creation only)
+          example: EXT-CS-001
+        supplyId:
+          type: string
+          format: uuid
+          description: UUID of the linked supply (alternative to `supplyExternalId`)
+          example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+        supplyExternalId:
+          type: string
+          maxLength: 100
+          description: External ID of the linked supply (alternative to `supplyId`)
+          example: EXT-SUP-001
+        supplierId:
+          type: string
+          format: uuid
+          description: UUID of the linked supplier (alternative to `supplierExternalId`)
+          example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+        supplierExternalId:
+          type: string
+          maxLength: 100
+          description: External ID of the linked supplier (alternative to `supplierId`)
+          example: EXT-SUPPLIER-001
+        concreteBatchingPlantId:
+          type: string
+          format: uuid
+          description: UUID of the linked batching plant (alternative to `concreteBatchingPlantExternalId`)
+          example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+        concreteBatchingPlantExternalId:
+          type: string
+          maxLength: 100
+          description: External ID of the linked batching plant (alternative to `concreteBatchingPlantId`)
+          example: EXT-CBP-001
+        purchaseMeasureUnitTypeId:
+          type: string
+          format: uuid
+          description: UUID of the purchase unit of measure (alternative to `purchaseMeasureUnitTypeExternalId`)
+          example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+        purchaseMeasureUnitTypeExternalId:
+          type: string
+          maxLength: 100
+          description: External ID of the purchase unit of measure (alternative to `purchaseMeasureUnitTypeId`)
+          example: EXT-MUT-KG
+        useMeasureUnitTypeId:
+          type: string
+          format: uuid
+          description: UUID of the usage unit of measure (alternative to `useMeasureUnitTypeExternalId`)
+          example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+        useMeasureUnitTypeExternalId:
+          type: string
+          maxLength: 100
+          description: External ID of the usage unit of measure (alternative to `useMeasureUnitTypeId`)
+          example: EXT-MUT-KG
+
+    CostSupply:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique internal identifier of the cost supply record
+          example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+        active:
+          type: boolean
+          description: Whether the cost supply record is active
+          example: true
+        costValue:
+          type: number
+          format: double
+          description: Supply cost value per unit
+          example: 125.50
+        freightValue:
+          type: number
+          format: double
+          description: Shipping/freight value per unit
+          example: 15.00
+        conversionFactor:
+          type: number
+          format: double
+          description: Conversion factor between purchase and usage units
+          example: 1.0
+        effectiveDate:
+          type: string
+          format: date
+          description: Date when this cost became effective
+          example: "2025-03-01"
+        lossPercentage:
+          type: number
+          format: double
+          description: Percentage of supply loss during production
+          example: 2.5
+        sandMoistureLevel:
+          type: number
+          format: double
+          description: Moisture percentage of the supply material
+          example: 0
+        externalId:
+          type: string
+          maxLength: 100
+          description: External system reference identifier
+          example: EXT-CS-001
+        concreteBatchingPlant:
+          $ref: '#/components/schemas/ConcreteBatchingPlant'
+        supplier:
+          $ref: '#/components/schemas/Supplier'
+        supply:
+          $ref: '#/components/schemas/Supply'
+        purchaseMeasureUnitType:
+          $ref: '#/components/schemas/MeasureUnitType'
+        useMeasureUnitType:
+          $ref: '#/components/schemas/MeasureUnitType'
+        createdAt:
+          type: string
+          format: date-time
+          description: Timestamp when the record was created
+          example: "2025-01-15T10:30:00"
+        updatedAt:
+          type: string
+          format: date-time
+          description: Timestamp when the record was last updated
+          example: "2025-01-15T10:30:00"
+
+    CostSupplyResponse:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          properties:
+            result:
+              $ref: '#/components/schemas/CostSupply'
+
+    CostSupplyListResponse:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          properties:
+            result:
+              type: array
+              items:
+                $ref: '#/components/schemas/CostSupply'
+
+    # ── Technical Data Supply ──
+    TechnicalDataSupplyInput:
+      type: object
+      required: [specificMass, unitMass, effectiveDate, externalId]
+      properties:
+        specificMass:
+          type: number
+          format: double
+          description: Specific mass of the supply material (kg/m³)
+          example: 2650.0
+        unitMass:
+          type: number
+          format: double
+          description: Unit mass of the supply material (kg/m³)
+          example: 1520.0
+        effectiveDate:
+          type: string
+          format: date
+          description: Date when this technical data becomes effective (must be unique per supply/plant/supplier combination)
+          example: "2025-03-01"
+        isDefaultSupplySupplier:
+          type: boolean
+          description: Whether this record is the default technical data for the supply-supplier pair
+          default: true
+          example: true
+        active:
+          type: boolean
+          description: Whether the technical data supply record is active
+          default: true
+          example: true
+        externalId:
+          type: string
+          maxLength: 100
+          description: Unique external system reference (required on creation only)
+          example: EXT-TDS-001
+        supplyId:
+          type: string
+          format: uuid
+          description: UUID of the linked supply (alternative to `supplyExternalId`)
+          example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+        supplyExternalId:
+          type: string
+          description: External ID of the linked supply (alternative to `supplyId`)
+          example: EXT-SUP-001
+        supplierId:
+          type: string
+          format: uuid
+          description: UUID of the linked supplier (alternative to `supplierExternalId`)
+          example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+        supplierExternalId:
+          type: string
+          description: External ID of the linked supplier (alternative to `supplierId`)
+          example: EXT-SUPPLIER-001
+        concreteBatchingPlantId:
+          type: string
+          format: uuid
+          description: UUID of the linked batching plant (alternative to `concreteBatchingPlantExternalId`)
+          example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+        concreteBatchingPlantExternalId:
+          type: string
+          description: External ID of the linked batching plant (alternative to `concreteBatchingPlantId`)
+          example: EXT-CBP-001
+
+    TechnicalDataSupply:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique internal identifier of the technical data supply record
+          example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+        specificMass:
+          type: number
+          format: double
+          description: Specific mass of the supply material (kg/m³)
+          example: 2650.0
+        unitMass:
+          type: number
+          format: double
+          description: Unit mass of the supply material (kg/m³)
+          example: 1520.0
+        effectiveDate:
+          type: string
+          format: date
+          description: Date when this technical data became effective
+          example: "2025-03-01"
+        isDefaultSupplySupplier:
+          type: boolean
+          description: Whether this is the default technical data for the supply-supplier pair
+          example: true
+        active:
+          type: boolean
+          description: Whether the technical data supply record is active
+          example: true
+        externalId:
+          type: string
+          maxLength: 100
+          description: External system reference identifier
+          example: EXT-TDS-001
+        concreteBatchingPlant:
+          $ref: '#/components/schemas/ConcreteBatchingPlant'
+        supplier:
+          $ref: '#/components/schemas/Supplier'
+        supply:
+          $ref: '#/components/schemas/Supply'
+        createdAt:
+          type: string
+          format: date-time
+          description: Timestamp when the record was created
+          example: "2025-01-15T10:30:00"
+        updatedAt:
+          type: string
+          format: date-time
+          description: Timestamp when the record was last updated
+          example: "2025-01-15T10:30:00"
+
+    TechnicalDataSupplyResponse:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          properties:
+            result:
+              $ref: '#/components/schemas/TechnicalDataSupply'
+
+    TechnicalDataSupplyListResponse:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          properties:
+            result:
+              type: array
+              items:
+                $ref: '#/components/schemas/TechnicalDataSupply'
+
+    # ── Concrete Recipe Family ──
+    ProductType:
+      type: string
+      enum: [NORMAL, SPECIAL, MORTAR]
+      description: Type classification of the product group
+      example: NORMAL
+
+    ProductGroup:
+      type: object
+      properties:
+        externalId:
+          type: string
+          maxLength: 100
+          description: External system reference identifier for the product group
+          example: EXT-PG-001
+        name:
+          type: string
+          maxLength: 130
+          description: Name of the product group
+          example: Conventional Concrete
+        abbreviation:
+          type: string
+          maxLength: 130
+          description: Abbreviation of the product group
+          example: CC
+        active:
+          type: boolean
+          description: Whether the product group is active
+          example: true
+        special:
+          type: boolean
+          description: Whether this is a special product group
+          example: false
+        productType:
+          $ref: '#/components/schemas/ProductType'
+
+    Gravel:
+      type: object
+      properties:
+        externalId:
+          type: string
+          maxLength: 100
+          description: External system reference identifier for the gravel type
+          example: EXT-GRV-001
+        name:
+          type: string
+          maxLength: 130
+          description: Name of the gravel type
+          example: Gravel 19mm
+        description:
+          type: string
+          maxLength: 130
+          description: Description of the gravel type
+          example: Crushed gravel with 19mm maximum diameter
+        active:
+          type: boolean
+          description: Whether the gravel type is active
+          example: true
+        fixed:
+          type: boolean
+          description: Whether this is a system-defined gravel type
+          example: false
+
+    Slump:
+      type: object
+      properties:
+        externalId:
+          type: string
+          maxLength: 100
+          description: External system reference identifier for the slump specification
+          example: EXT-SLM-001
+        value:
+          type: number
+          format: double
+          description: Target slump value
+          example: 100.0
+        amplitude:
+          type: number
+          format: double
+          description: Acceptable amplitude tolerance for the slump measurement
+          example: 20.0
+        active:
+          type: boolean
+          description: Whether the slump specification is active
+          example: true
+        unitTypeId:
+          type: string
+          format: uuid
+          description: UUID of the measure unit type for this slump value
+          example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+        ClassTypeId:
+          type: string
+          format: uuid
+          description: UUID of the classification type related to this slump
+          example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+
+    ConcreteRecipeFamily:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique internal identifier of the concrete recipe family
+          example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+        externalId:
+          type: string
+          maxLength: 100
+          description: External system reference identifier
+          example: EXT-CRF-001
+        active:
+          type: boolean
+          description: Whether the recipe family is active
+          example: true
+        commercialDefault:
+          type: boolean
+          description: Whether this is the default commercial recipe family
+          example: true
+        specification:
+          type: string
+          maxLength: 130
+          description: Technical specification of the recipe family
+          example: "FCK 25 MPA - Slump 100±20 - Gravel 19mm"
+        numeration:
+          type: integer
+          description: System-generated sequential number for the recipe family
+          example: 1
+        currentVersionId:
+          type: string
+          format: uuid
+          description: UUID of the currently active version of this recipe family
+          example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+        lastVersionId:
+          type: string
+          format: uuid
+          description: UUID of the latest version of this recipe family
+          example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+        createdAt:
+          type: string
+          format: date-time
+          description: Timestamp when the record was created
+          example: "2025-01-15T10:30:00"
+        updatedAt:
+          type: string
+          format: date-time
+          description: Timestamp when the record was last updated
+          example: "2025-01-15T10:30:00"
+        concreteBatchingPlant:
+          $ref: '#/components/schemas/ConcreteBatchingPlant'
+        productGroup:
+          $ref: '#/components/schemas/ProductGroup'
+        gravel:
+          $ref: '#/components/schemas/Gravel'
+        slump:
+          $ref: '#/components/schemas/Slump'
+        slumpInitial:
+          $ref: '#/components/schemas/Slump'
+
+    ConcreteRecipeFamilyResponse:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          properties:
+            result:
+              $ref: '#/components/schemas/ConcreteRecipeFamily'
+
+    ConcreteRecipeFamilyListResponse:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          properties:
+            result:
+              type: array
+              items:
+                $ref: '#/components/schemas/ConcreteRecipeFamily'
+
+    # ── Concrete Recipe Family Version ──
+    VersionStatus:
+      type: string
+      enum: [IN_EXPERIMENT, ACTIVE, FUTURE_ACTIVE, INACTIVE]
+      description: Lifecycle status of the recipe family version
+      example: ACTIVE
+
+    DispersionInputData:
+      type: string
+      enum: [COEFFICIENT_OF_VARIATION, STANDARD_DEVIATION]
+      description: Dispersion input data method used in calculations
+      example: STANDARD_DEVIATION
+
+    InputDataMethod:
+      type: string
+      enum: [TECHNICAL_DATA, MANUALLY]
+      description: Method used to input recipe data
+      example: TECHNICAL_DATA
+
+    ConcreteRecipeFamilyVersion:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique internal identifier of the recipe family version
+          example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+        externalId:
+          type: string
+          maxLength: 100
+          description: External system reference identifier
+          example: EXT-CRFV-001
+        statusDate:
+          type: string
+          format: date
+          description: Date when the current status was set
+          example: "2025-01-15"
+        createdAt:
+          type: string
+          format: date-time
+          description: Timestamp when the record was created
+          example: "2025-01-15T10:30:00"
+        updatedAt:
+          type: string
+          format: date-time
+          description: Timestamp when the record was last updated
+          example: "2025-01-15T10:30:00"
+        note:
+          type: string
+          description: Optional notes about this version
+          example: Initial version for Q1 2025
+        version:
+          type: integer
+          description: Sequential version number within the recipe family
+          example: 1
+        status:
+          $ref: '#/components/schemas/VersionStatus'
+        defaultDispersionInputData:
+          $ref: '#/components/schemas/DispersionInputData'
+        inputDataMethod:
+          $ref: '#/components/schemas/InputDataMethod'
+        defaultMortarContent:
+          type: number
+          format: double
+          description: Default mortar content percentage
+          example: 52.5
+        waterContent:
+          type: number
+          format: double
+          description: Water content in the recipe (liters per m³)
+          example: 190.0
+        defaultIncorporatedAir:
+          type: number
+          format: double
+          description: Default incorporated air percentage
+          example: 1.5
+        defaultVolume:
+          type: number
+          format: double
+          description: Default volume reference (m³)
+          example: 1000.0
+        defaultDispersionValue:
+          type: number
+          format: double
+          description: Default dispersion value for statistical calculations
+          example: 4.0
+        mortarContentStep:
+          type: number
+          format: double
+          description: Step increment for mortar content adjustment
+          example: 0.5
+        waterStep:
+          type: number
+          format: double
+          description: Step increment for water content adjustment
+          example: 5.0
+        waterCementRatioStepReference:
+          type: number
+          format: double
+          description: Reference step increment for water/cement ratio
+          example: 0.05
+        costUpdateDate:
+          type: string
+          format: date
+          description: Date when cost information was last updated for this version
+          example: "2025-02-01"
+        concreteRecipeFamilyId:
+          type: string
+          format: uuid
+          description: UUID of the parent recipe family
+          example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+        concreteRecipeFamily:
+          $ref: '#/components/schemas/ConcreteRecipeFamily'
+
+    ConcreteRecipeFamilyVersionPaginatedResponse:
+      type: object
+      properties:
+        page:
+          type: integer
+          description: Current page number (1-based)
+          example: 1
+        perPage:
+          type: integer
+          description: Number of records per page
+          example: 20
+        pageCount:
+          type: integer
+          description: Total number of pages available
+          example: 5
+        totalCount:
+          type: integer
+          description: Total number of records matching the query
+          example: 97
+        result:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConcreteRecipeFamilyVersion'
+        status:
+          type: string
+          enum: [success, alert, error]
+          description: Status of the executed process
+          example: success
+        message:
+          type: string
+          description: Human-readable message regarding the result
+          example: Records retrieved successfully
+        errorCode:
+          type: string
+          description: Machine-readable error code if applicable
+        notifications:
+          type: array
+          items:
+            type: string
+          description: List of validation messages if applicable
+
+    # ── Concrete Recipe ──
+    MeasureUnitTypeCharacteristic:
+      type: string
+      enum: [GPA, KGM_3, MPA, PERCENTAGE]
+      description: Measurement unit characteristic used for concrete characteristics
+      example: MPA
+
+    ConcreteCharacteristicsType:
+      type: object
+      properties:
+        externalId:
+          type: string
+          maxLength: 100
+          description: External system reference for the characteristics type
+          example: EXT-CCT-001
+        abbreviation:
+          type: string
+          maxLength: 30
+          description: Abbreviation of the characteristics type
+          example: FCK
+        active:
+          type: boolean
+          description: Whether the characteristics type is active
+          example: true
+        fixed:
+          type: boolean
+          description: Whether this is a system-defined characteristics type
+          example: true
+        mask:
+          type: string
+          maxLength: 50
+          description: Display mask for the characteristic value
+          example: "###.##"
+        description:
+          type: string
+          maxLength: 130
+          description: Full description of the characteristics type
+          example: Characteristic compressive strength
+        measureUnitTypeCharacteristic:
+          $ref: '#/components/schemas/MeasureUnitTypeCharacteristic'
+
+    ConcreteRecipeUpdateInput:
+      type: object
+      required: [externalId]
+      properties:
+        externalId:
+          type: string
+          maxLength: 100
+          description: Unique external system reference to assign to the concrete recipe
+          example: EXT-CR-001
+
+    ConcreteRecipe:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique internal identifier of the concrete recipe
+          example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+        externalId:
+          type: string
+          maxLength: 100
+          description: External system reference identifier
+          example: EXT-CR-001
+        numeration:
+          type: integer
+          description: System-generated sequential number for the recipe
+          example: 42
+        specification:
+          type: string
+          maxLength: 130
+          description: Technical specification string of the concrete recipe
+          example: "FCK 25 MPA"
+        description:
+          type: string
+          maxLength: 130
+          description: Human-readable description of the concrete recipe
+          example: Concrete 25 MPa for structural use
+        concreteRecipeCharacteristicValue:
+          type: number
+          format: double
+          description: Primary characteristic value of the recipe (e.g., compressive strength in MPa)
+          example: 25.0
+        active:
+          type: boolean
+          description: Whether the recipe is active
+          example: true
+        createdAt:
+          type: string
+          format: date-time
+          description: Timestamp when the record was created
+          example: "2025-01-15T10:30:00"
+        updatedAt:
+          type: string
+          format: date-time
+          description: Timestamp when the record was last updated
+          example: "2025-01-15T10:30:00"
+        gravel:
+          $ref: '#/components/schemas/Gravel'
+        slump:
+          $ref: '#/components/schemas/Slump'
+        slumpInitial:
+          $ref: '#/components/schemas/Slump'
+        productGroup:
+          $ref: '#/components/schemas/ProductGroup'
+        concreteCharacteristicsType:
+          $ref: '#/components/schemas/ConcreteCharacteristicsType'
+
+    ConcreteRecipeResponse:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          properties:
+            result:
+              $ref: '#/components/schemas/ConcreteRecipe'
+
+    ConcreteRecipeListResponse:
+      allOf:
+        - $ref: '#/components/schemas/BaseResponse'
+        - type: object
+          properties:
+            result:
+              type: array
+              items:
+                $ref: '#/components/schemas/ConcreteRecipe'

@@ -1,0 +1,1456 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Topcon Suite — API Documentation</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.redoc.ly/redoc/latest/bundles/redoc.standalone.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/js-yaml@4/dist/js-yaml.min.js" defer></script>
+  <style>
+    /* ══════════════════════════════════════════════════════════════
+       Art direction: Topcon Suite API Portal
+       Inspired by TopconTECH product design — deep navy, teal accent,
+       sharp enterprise-grade aesthetic.
+       Typography: Plus Jakarta Sans — geometric, modern, distinctive.
+       Density: balanced for documentation readability.
+    ══════════════════════════════════════════════════════════════ */
+
+    :root {
+      --font-body: 'Plus Jakarta Sans', system-ui, sans-serif;
+      --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+
+      --text-2xs:  0.6875rem;
+      --text-xs:   clamp(0.75rem,  0.7rem  + 0.25vw, 0.8125rem);
+      --text-sm:   clamp(0.8125rem, 0.78rem + 0.2vw, 0.875rem);
+      --text-base: clamp(0.875rem, 0.85rem + 0.15vw, 0.9375rem);
+      --text-lg:   clamp(1.0625rem, 1rem + 0.4vw, 1.25rem);
+      --text-xl:   clamp(1.375rem, 1.15rem + 0.8vw, 1.75rem);
+      --text-2xl:  clamp(1.75rem,  1.4rem  + 1.2vw, 2.5rem);
+
+      --space-1: 0.25rem; --space-2: 0.5rem;  --space-3: 0.75rem;
+      --space-4: 1rem;    --space-5: 1.25rem;  --space-6: 1.5rem;
+      --space-8: 2rem;    --space-10: 2.5rem;  --space-12: 3rem;
+      --space-16: 4rem;   --space-20: 5rem;
+
+      --sidebar-width: 272px;
+      --header-height: 56px;
+
+      --transition-fast: 120ms cubic-bezier(0.16, 1, 0.3, 1);
+      --transition-base: 200ms cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    /* ── DARK THEME (Topcon brand — deep navy #003563) ── */
+    [data-theme="dark"] {
+      --color-bg:              #020c1a;
+      --color-surface:         #061527;
+      --color-surface-2:       #0b1c33;
+      --color-surface-3:       #112640;
+      --color-surface-offset:  #1a3050;
+      --color-divider:         #163052;
+      --color-border:          #1e4270;
+
+      --color-text:            #e2e8f0;
+      --color-text-muted:      #94a3b8;
+      --color-text-faint:      #64748b;
+      --color-text-inverse:    #ffffff;
+
+      --color-accent:          #4a9eed;
+      --color-accent-hover:    #6fb5f5;
+      --color-accent-muted:    #003563;
+      --color-accent-subtle:   rgba(0, 53, 99, 0.18);
+      --color-accent-glow:     rgba(74, 158, 237, 0.15);
+
+      --color-crm:             #f59e0b;
+      --color-tech:            #4a9eed;
+      --color-dispatch:        #8b5cf6;
+
+      --color-success:         #10b981;
+      --color-warning:         #f59e0b;
+      --color-error:           #ef4444;
+      --color-info:            #3b82f6;
+
+      --shadow-sm:  0 1px 3px rgba(0,0,0,0.4);
+      --shadow-md:  0 4px 16px rgba(0,12,26,0.5);
+      --shadow-lg:  0 8px 32px rgba(0,12,26,0.6);
+      --shadow-glow: 0 0 20px rgba(0,53,99,0.25);
+
+      --radius-sm: 4px;
+      --radius-md: 6px;
+      --radius-lg: 8px;
+      --radius-xl: 12px;
+      --radius-2xl: 16px;
+      --radius-full: 9999px;
+    }
+
+    /* ── LIGHT THEME ── */
+    [data-theme="light"] {
+      --color-bg:              #f0f4f8;
+      --color-surface:         #ffffff;
+      --color-surface-2:       #f8fafc;
+      --color-surface-3:       #f1f5f9;
+      --color-surface-offset:  #e2e8f0;
+      --color-divider:         #dde5ef;
+      --color-border:          #c0cee0;
+
+      --color-text:            #0f172a;
+      --color-text-muted:      #475569;
+      --color-text-faint:      #94a3b8;
+      --color-text-inverse:    #ffffff;
+
+      --color-accent:          #003563;
+      --color-accent-hover:    #002244;
+      --color-accent-muted:    #004a8a;
+      --color-accent-subtle:   rgba(0, 53, 99, 0.06);
+      --color-accent-glow:     rgba(0, 53, 99, 0.1);
+
+      --color-crm:             #d97706;
+      --color-tech:            #003563;
+      --color-dispatch:        #7c3aed;
+
+      --color-success:         #059669;
+      --color-warning:         #d97706;
+      --color-error:           #dc2626;
+      --color-info:            #2563eb;
+
+      --shadow-sm:  0 1px 2px rgba(0,53,99,0.06);
+      --shadow-md:  0 4px 12px rgba(0,53,99,0.08);
+      --shadow-lg:  0 8px 24px rgba(0,53,99,0.12);
+      --shadow-glow: 0 0 20px rgba(0,53,99,0.08);
+
+      --radius-sm: 4px;
+      --radius-md: 6px;
+      --radius-lg: 8px;
+      --radius-xl: 12px;
+      --radius-2xl: 16px;
+      --radius-full: 9999px;
+    }
+
+    /* ── RESET ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; scroll-behavior: smooth; height: 100dvh; overflow: hidden; }
+    body {
+      font-family: var(--font-body);
+      font-size: var(--text-base);
+      color: var(--color-text);
+      background: var(--color-bg);
+      height: 100dvh;
+      overflow: hidden;
+      line-height: 1.6;
+    }
+    img, svg { display: block; max-width: 100%; }
+    button { cursor: pointer; background: none; border: none; font: inherit; color: inherit; }
+    a { color: inherit; text-decoration: none; }
+    a, button, [role="button"] { transition: color var(--transition-fast), background var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast); }
+    :focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; border-radius: var(--radius-sm); }
+    .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; }
+    code { font-family: var(--font-mono); }
+
+    /* ── LAYOUT ── */
+    .layout {
+      display: grid;
+      grid-template-rows: var(--header-height) 1fr;
+      grid-template-columns: var(--sidebar-width) 1fr;
+      height: 100dvh;
+    }
+
+    /* ── HEADER ── */
+    .header {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: center;
+      gap: var(--space-4);
+      padding: 0 var(--space-6);
+      background: var(--color-surface);
+      border-bottom: 1px solid var(--color-divider);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(12px);
+    }
+
+    .header-brand {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      flex-shrink: 0;
+    }
+    .header-brand-icon {
+      width: 32px;
+      height: 32px;
+      background: linear-gradient(135deg, var(--color-accent), #003563);
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 800;
+      font-size: var(--text-sm);
+      letter-spacing: -0.02em;
+      box-shadow: 0 0 12px rgba(0,53,99,0.4);
+    }
+    .header-brand-text {
+      font-size: var(--text-sm);
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      color: var(--color-text);
+    }
+    .header-brand-text .accent { color: var(--color-accent); }
+    .header-brand-logo {
+      height: 28px;
+      width: auto;
+      object-fit: contain;
+    }
+    .header-brand-sep {
+      width: 1px;
+      height: 20px;
+      background: var(--color-divider);
+      margin: 0 var(--space-2);
+    }
+    .header-brand-sub {
+      font-size: var(--text-xs);
+      font-weight: 500;
+      color: var(--color-text-faint);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .header-controls {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+    }
+
+    .pill-toggle {
+      display: flex;
+      align-items: center;
+      gap: 1px;
+      background: var(--color-surface-2);
+      border: 1px solid var(--color-divider);
+      border-radius: var(--radius-full);
+      padding: 2px;
+    }
+    .pill-btn {
+      padding: var(--space-1) var(--space-3);
+      border-radius: var(--radius-full);
+      font-size: var(--text-2xs);
+      font-weight: 600;
+      color: var(--color-text-faint);
+      letter-spacing: 0.02em;
+    }
+    .pill-btn.active {
+      background: var(--color-accent);
+      color: var(--color-text-inverse);
+      box-shadow: var(--shadow-sm);
+    }
+    .pill-btn:hover:not(.active) { color: var(--color-text-muted); }
+
+    .icon-btn {
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: var(--radius-md);
+      color: var(--color-text-faint);
+    }
+    .icon-btn:hover { background: var(--color-surface-offset); color: var(--color-text); }
+
+    /* ── SIDEBAR ── */
+    .sidebar {
+      background: var(--color-surface);
+      border-right: 1px solid var(--color-divider);
+      overflow-y: auto;
+      position: sticky;
+      top: var(--header-height);
+      height: calc(100dvh - var(--header-height));
+      padding: var(--space-4) 0 var(--space-8);
+      scrollbar-width: thin;
+      scrollbar-color: var(--color-surface-offset) transparent;
+    }
+
+    .sidebar-section { margin-bottom: var(--space-1); }
+    .sidebar-label {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      padding: var(--space-3) var(--space-5) var(--space-1);
+      font-size: var(--text-2xs);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--color-text-faint);
+    }
+    .sidebar-label svg { width: 12px; height: 12px; opacity: 0.5; }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      padding: 6px var(--space-5);
+      font-size: var(--text-sm);
+      font-weight: 450;
+      color: var(--color-text-muted);
+      cursor: pointer;
+      width: 100%;
+      text-align: left;
+      border-left: 2px solid transparent;
+      position: relative;
+    }
+    .nav-item:hover {
+      background: var(--color-accent-subtle);
+      color: var(--color-text);
+    }
+    .nav-item.active {
+      background: var(--color-accent-subtle);
+      color: var(--color-accent);
+      border-left-color: var(--color-accent);
+      font-weight: 600;
+    }
+    .nav-item svg, .nav-item img {
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
+      opacity: 0.6;
+      border-radius: 2px;
+      object-fit: contain;
+    }
+    .nav-item.active svg, .nav-item.active img { opacity: 1; color: var(--color-accent); }
+
+    .nav-badge {
+      margin-left: auto;
+      font-size: var(--text-2xs);
+      font-weight: 700;
+      font-family: var(--font-mono);
+      padding: 1px 6px;
+      border-radius: var(--radius-full);
+      letter-spacing: 0.02em;
+    }
+    .nav-badge-crm { background: rgba(245,158,11,0.12); color: var(--color-crm); }
+    .nav-badge-tech { background: rgba(0,53,99,0.12); color: var(--color-tech); }
+    .nav-badge-dispatch { background: rgba(139,92,246,0.12); color: var(--color-dispatch); }
+
+    .sidebar-divider { height: 1px; background: var(--color-divider); margin: var(--space-3) var(--space-5); }
+
+    .sidebar-version {
+      padding: var(--space-4) var(--space-5);
+      margin-top: var(--space-4);
+    }
+    .sidebar-version-text {
+      font-size: var(--text-2xs);
+      color: var(--color-text-faint);
+      font-family: var(--font-mono);
+    }
+
+    /* ── MAIN ── */
+    .main {
+      overflow-y: auto;
+      min-height: 0;
+      scroll-behavior: smooth;
+    }
+
+    /* ── VIEWS ── */
+    .view { display: none; }
+    .view.active { display: block; }
+    #view-ref.active { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
+
+    /* ── HOME VIEW ── */
+    .home { padding: var(--space-12) var(--space-8); max-width: 1000px; }
+
+    .home-hero {
+      margin-bottom: var(--space-12);
+      position: relative;
+    }
+    .home-hero::before {
+      content: '';
+      position: absolute;
+      top: -40px;
+      left: -60px;
+      width: 300px;
+      height: 300px;
+      background: radial-gradient(circle, var(--color-accent-glow) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: -1;
+    }
+    .home-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-2);
+      padding: var(--space-1) var(--space-3);
+      border-radius: var(--radius-full);
+      background: var(--color-accent-subtle);
+      border: 1px solid var(--color-accent-muted);
+      font-size: var(--text-2xs);
+      font-weight: 700;
+      color: var(--color-accent);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: var(--space-4);
+    }
+    .home-eyebrow .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--color-accent); animation: pulse-dot 2s ease-in-out infinite; }
+    @keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+    .home h1 {
+      font-size: var(--text-2xl);
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      line-height: 1.15;
+      margin-bottom: var(--space-4);
+    }
+    .home h1 .accent { color: var(--color-accent); }
+    .home-subtitle {
+      color: var(--color-text-muted);
+      font-size: var(--text-base);
+      max-width: 60ch;
+      line-height: 1.7;
+    }
+
+    .home-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(min(290px, 100%), 1fr));
+      gap: var(--space-4);
+      margin-top: var(--space-8);
+    }
+
+    .project-card {
+      background: var(--color-surface);
+      border: 1px solid var(--color-divider);
+      border-radius: var(--radius-xl);
+      padding: var(--space-6);
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+    }
+    .project-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+    }
+    .project-card:hover {
+      border-color: var(--color-border);
+      box-shadow: var(--shadow-md);
+      transform: translateY(-1px);
+    }
+    .project-card-crm::before { background: linear-gradient(90deg, var(--color-crm), #fbbf24); }
+    .project-card-tech::before { background: linear-gradient(90deg, var(--color-tech), #4a9eed); }
+    .project-card-dispatch::before { background: linear-gradient(90deg, var(--color-dispatch), #a78bfa); }
+
+    .project-card-badge {
+      display: inline-block;
+      font-size: var(--text-2xs);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: var(--space-3);
+      padding: 2px 8px;
+      border-radius: var(--radius-full);
+    }
+    .project-card-crm .project-card-badge { background: rgba(245,158,11,0.12); color: var(--color-crm); }
+    .project-card-tech .project-card-badge { background: rgba(0,53,99,0.12); color: var(--color-tech); }
+    .project-card-dispatch .project-card-badge { background: rgba(139,92,246,0.12); color: var(--color-dispatch); }
+
+    .project-card h3 {
+      font-size: var(--text-lg);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: var(--space-2);
+    }
+    .project-card p {
+      font-size: var(--text-sm);
+      color: var(--color-text-muted);
+      line-height: 1.65;
+      margin-bottom: var(--space-3);
+    }
+    .project-card-meta {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      font-size: var(--text-2xs);
+      color: var(--color-text-faint);
+      font-family: var(--font-mono);
+    }
+    .project-card-meta span { display: flex; align-items: center; gap: 4px; }
+    .project-card-arrow {
+      margin-top: var(--space-4);
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      font-size: var(--text-sm);
+      font-weight: 600;
+      color: var(--color-accent);
+    }
+    .project-card-arrow svg { transition: transform var(--transition-fast); }
+    .project-card:hover .project-card-arrow svg { transform: translateX(3px); }
+
+    /* ── GUIDE / DOC CONTENT ── */
+    .guide {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: var(--space-12) var(--space-8);
+    }
+    .guide h1 {
+      font-size: var(--text-xl);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      margin-bottom: var(--space-2);
+    }
+    .guide .subtitle {
+      color: var(--color-text-muted);
+      font-size: var(--text-base);
+      margin-bottom: var(--space-8);
+      line-height: 1.7;
+    }
+    .guide h2 {
+      font-size: var(--text-lg);
+      font-weight: 700;
+      margin: var(--space-10) 0 var(--space-3);
+      letter-spacing: -0.02em;
+      padding-bottom: var(--space-2);
+      border-bottom: 1px solid var(--color-divider);
+    }
+    .guide h3 { font-size: var(--text-base); font-weight: 700; margin: var(--space-6) 0 var(--space-2); }
+    .guide p { color: var(--color-text-muted); line-height: 1.75; margin-bottom: var(--space-4); max-width: 70ch; }
+    .guide p strong { color: var(--color-text); }
+    .guide ul, .guide ol { padding-left: var(--space-6); margin-bottom: var(--space-4); }
+    .guide li { color: var(--color-text-muted); line-height: 1.7; margin-bottom: var(--space-1); }
+    .guide code:not(pre code) {
+      font-size: 0.85em;
+      padding: 2px 6px;
+      background: var(--color-surface-offset);
+      border: 1px solid var(--color-divider);
+      border-radius: var(--radius-sm);
+      color: var(--color-accent);
+    }
+    .guide hr {
+      border: none;
+      border-top: 1px solid var(--color-divider);
+      margin: var(--space-10) 0;
+    }
+
+    /* Code Block */
+    .code-block {
+      background: var(--color-surface-2);
+      border: 1px solid var(--color-divider);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      margin: var(--space-4) 0;
+    }
+    .code-block-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--space-2) var(--space-4);
+      background: var(--color-surface-3);
+      border-bottom: 1px solid var(--color-divider);
+    }
+    .code-block-lang {
+      font-size: var(--text-2xs);
+      font-weight: 600;
+      color: var(--color-text-faint);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      font-family: var(--font-mono);
+    }
+    .code-block-copy {
+      font-size: var(--text-2xs);
+      font-weight: 600;
+      color: var(--color-text-faint);
+      padding: 2px var(--space-2);
+      border-radius: var(--radius-sm);
+      font-family: var(--font-mono);
+    }
+    .code-block-copy:hover { background: var(--color-surface-offset); color: var(--color-text-muted); }
+    .code-block pre {
+      padding: var(--space-4);
+      overflow-x: auto;
+      scrollbar-width: thin;
+    }
+    .code-block code {
+      font-family: var(--font-mono);
+      font-size: var(--text-xs);
+      line-height: 1.7;
+      color: var(--color-text);
+    }
+
+    /* Callout */
+    .callout {
+      border-radius: var(--radius-lg);
+      padding: var(--space-4) var(--space-5);
+      margin: var(--space-5) 0;
+      display: flex;
+      gap: var(--space-3);
+      align-items: flex-start;
+    }
+    .callout-info {
+      background: rgba(59,130,246,0.06);
+      border: 1px solid rgba(59,130,246,0.15);
+    }
+    .callout-warning {
+      background: rgba(245,158,11,0.06);
+      border: 1px solid rgba(245,158,11,0.15);
+    }
+    .callout-icon { font-size: var(--text-base); flex-shrink: 0; margin-top: 1px; }
+    .callout-body { font-size: var(--text-sm); line-height: 1.65; color: var(--color-text-muted); }
+    .callout-body strong { color: var(--color-text); }
+
+    /* Auth method cards */
+    .auth-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr));
+      gap: var(--space-4);
+      margin: var(--space-6) 0;
+    }
+    .auth-card {
+      background: var(--color-surface-2);
+      border: 1px solid var(--color-divider);
+      border-radius: var(--radius-lg);
+      padding: var(--space-5);
+      position: relative;
+      overflow: hidden;
+    }
+    .auth-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+    }
+    .auth-card-crm::before { background: var(--color-crm); }
+    .auth-card-tech::before { background: var(--color-tech); }
+    .auth-card-dispatch::before { background: var(--color-dispatch); }
+    .auth-card-name {
+      font-size: var(--text-sm);
+      font-weight: 700;
+      margin-bottom: var(--space-1);
+    }
+    .auth-card-framework {
+      font-size: var(--text-2xs);
+      color: var(--color-text-faint);
+      font-family: var(--font-mono);
+      margin-bottom: var(--space-3);
+    }
+    .auth-card-header {
+      font-size: var(--text-xs);
+      font-weight: 600;
+      color: var(--color-accent);
+      font-family: var(--font-mono);
+      background: var(--color-accent-subtle);
+      padding: var(--space-1) var(--space-2);
+      border-radius: var(--radius-sm);
+      display: inline-block;
+    }
+    .auth-card-desc {
+      font-size: var(--text-xs);
+      color: var(--color-text-muted);
+      margin-top: var(--space-2);
+      line-height: 1.6;
+    }
+
+    /* Flow images */
+    .flow-grid {
+      display: grid;
+      gap: var(--space-4);
+      margin: var(--space-6) 0;
+    }
+    .flow-item {
+      background: var(--color-surface-2);
+      border: 1px solid var(--color-divider);
+      border-radius: var(--radius-xl);
+      overflow: hidden;
+      cursor: pointer;
+    }
+    .flow-item:hover { border-color: var(--color-border); box-shadow: var(--shadow-md); }
+    .flow-item-header {
+      padding: var(--space-3) var(--space-5);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--color-divider);
+    }
+    .flow-item-title { font-size: var(--text-sm); font-weight: 600; }
+    .flow-item-expand {
+      font-size: var(--text-2xs);
+      color: var(--color-text-faint);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .flow-item-img {
+      padding: var(--space-4);
+      overflow-x: auto;
+      background: #fff;
+    }
+    .flow-item-img img {
+      max-width: none;
+      width: 100%;
+      height: auto;
+      min-width: 600px;
+    }
+
+    /* ── REDOC VIEW ── */
+    .redoc-view { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+    .redoc-toolbar {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      padding: var(--space-3) var(--space-6);
+      background: var(--color-surface);
+      border-bottom: 1px solid var(--color-divider);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      flex-shrink: 0;
+      flex-wrap: wrap;
+    }
+    .redoc-toolbar-label {
+      font-size: var(--text-2xs);
+      color: var(--color-text-faint);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .redoc-selector { display: flex; gap: var(--space-2); }
+    .redoc-btn {
+      padding: var(--space-1) var(--space-3);
+      border-radius: var(--radius-full);
+      font-size: var(--text-xs);
+      font-weight: 600;
+      border: 1px solid var(--color-divider);
+      background: var(--color-surface-2);
+      color: var(--color-text-muted);
+    }
+    .redoc-btn:hover { border-color: var(--color-accent); color: var(--color-accent); }
+    .redoc-btn.active { background: var(--color-accent); color: var(--color-text-inverse); border-color: var(--color-accent); }
+
+    #redoc-container { flex: 1; min-height: 0; overflow: auto; padding: 0; }
+    /* Redoc theme overrides for light/dark */
+    [data-theme="dark"] #redoc-container { color: #e2e8f0; background: var(--color-bg); }
+    [data-theme="dark"] #redoc-container h1,
+    [data-theme="dark"] #redoc-container h2,
+    [data-theme="dark"] #redoc-container h3,
+    [data-theme="dark"] #redoc-container h4,
+    [data-theme="dark"] #redoc-container h5 { color: #e2e8f0 !important; }
+    [data-theme="dark"] #redoc-container table { border-color: #163052 !important; }
+    [data-theme="dark"] #redoc-container td, [data-theme="dark"] #redoc-container th { border-color: #163052 !important; }
+    [data-theme="dark"] #redoc-container tr { background: transparent !important; }
+    [data-theme="dark"] #redoc-container code { background: #0b1c33 !important; }
+    [data-theme="light"] #redoc-container { color: #0f172a; background: var(--color-bg); }
+    [data-theme="light"] #redoc-container code { background: #f1f5f9 !important; }
+    #redoc-loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: var(--space-20);
+      gap: var(--space-4);
+      color: var(--color-text-muted);
+      font-size: var(--text-sm);
+    }
+    .spinner {
+      width: 28px; height: 28px;
+      border: 2px solid var(--color-divider);
+      border-top-color: var(--color-accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── FULLSCREEN IMAGE MODAL ── */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
+      z-index: 9999;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: var(--space-8);
+      cursor: zoom-out;
+    }
+    .modal-overlay.active { display: flex; }
+    .modal-overlay img {
+      max-width: 95vw;
+      max-height: 90vh;
+      object-fit: contain;
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-lg);
+    }
+
+    /* ── MOBILE ── */
+    .mobile-menu-btn {
+      display: none;
+      width: 36px; height: 36px;
+      align-items: center;
+      justify-content: center;
+      border-radius: var(--radius-md);
+      color: var(--color-text-muted);
+    }
+    .mobile-menu-btn:hover { background: var(--color-surface-offset); }
+
+    @media (max-width: 840px) {
+      .layout { grid-template-columns: 1fr; }
+      .sidebar {
+        position: fixed;
+        left: 0; top: var(--header-height);
+        width: var(--sidebar-width);
+        transform: translateX(-100%);
+        transition: transform 0.25s ease;
+        z-index: 50;
+        height: calc(100dvh - var(--header-height));
+        box-shadow: none;
+      }
+      .sidebar.open { transform: translateX(0); box-shadow: var(--shadow-lg); }
+      .mobile-menu-btn { display: flex; }
+      .guide, .home { padding: var(--space-6) var(--space-4); }
+      .redoc-toolbar { padding: var(--space-2) var(--space-4); }
+      .header-brand-sep, .header-brand-sub { display: none; }
+    }
+
+    /* ── SCROLLBAR ── */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--color-surface-offset); border-radius: var(--radius-full); }
+    ::-webkit-scrollbar-thumb:hover { background: var(--color-text-faint); }
+  </style>
+</head>
+<body>
+
+<a href="#main-content" class="sr-only">Skip to content</a>
+
+<!-- Image modal -->
+<div class="modal-overlay" id="img-modal" onclick="this.classList.remove('active')">
+  <img id="img-modal-src" src="" alt="Expanded flow diagram">
+</div>
+
+<div class="layout">
+
+  <!-- ═══ HEADER ═══ -->
+  <header class="header">
+    <button class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Toggle menu">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+
+    <div class="header-brand">
+      <img src="icons/topcon.png" alt="Topcon" class="header-brand-logo">
+      <div class="header-brand-sep"></div>
+      <span class="header-brand-sub" data-i18n="brand.sub">API Docs</span>
+    </div>
+
+    <div class="header-controls">
+      <div class="pill-toggle" role="group" aria-label="Language">
+        <button class="pill-btn active" data-lang="en" onclick="setLang('en')">EN</button>
+        <button class="pill-btn" data-lang="ptbr" onclick="setLang('ptbr')">PT-BR</button>
+      </div>
+      <button class="icon-btn" id="theme-toggle" aria-label="Toggle theme">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- ═══ SIDEBAR ═══ -->
+  <nav class="sidebar" id="sidebar" aria-label="Main navigation">
+
+    <div class="sidebar-section">
+      <div class="sidebar-label" data-i18n="nav.overview">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+        Overview
+      </div>
+      <button class="nav-item active" onclick="showView('home')" data-view="home">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        <span data-i18n="nav.home">Home</span>
+      </button>
+    </div>
+
+    <div class="sidebar-divider"></div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label" data-i18n="nav.guides">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+        Guides
+      </div>
+      <button class="nav-item" onclick="showView('guide-auth')" data-view="guide-auth">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        <span data-i18n="nav.auth">Authentication</span>
+      </button>
+      <button class="nav-item" onclick="showView('guide-flows')" data-view="guide-flows">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        <span data-i18n="nav.flows">Integration Flows</span>
+      </button>
+    </div>
+
+    <div class="sidebar-divider"></div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label" data-i18n="nav.reference">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        API Reference
+      </div>
+      <button class="nav-item" onclick="showView('ref'); loadSpec('crm')" data-view="ref-crm">
+        <img src="icons/crm.png" alt="TopconCRM" width="16" height="16">
+        <span data-i18n="nav.crm">TopconCRM</span>
+        <span class="nav-badge nav-badge-crm">CRM</span>
+      </button>
+      <button class="nav-item" onclick="showView('ref'); loadSpec('tech')" data-view="ref-tech">
+        <img src="icons/techlogo.png" alt="TopconTECH" width="16" height="16">
+        <span data-i18n="nav.tech">TopconTECH</span>
+        <span class="nav-badge nav-badge-tech">TECH</span>
+      </button>
+      <button class="nav-item" onclick="showView('ref'); loadSpec('dispatch')" data-view="ref-dispatch">
+        <img src="icons/dispatch.png" alt="TopconDispatch" width="16" height="16">
+        <span data-i18n="nav.dispatch">TopconDispatch</span>
+        <span class="nav-badge nav-badge-dispatch">DISPATCH</span>
+      </button>
+    </div>
+
+    <div class="sidebar-version">
+      <span class="sidebar-version-text">v1.0.0 — 2026</span>
+    </div>
+  </nav>
+
+  <!-- ═══ MAIN CONTENT ═══ -->
+  <main class="main" id="main-content">
+
+    <!-- ── HOME ── -->
+    <div class="view active" id="view-home">
+      <div class="home">
+        <div class="home-hero">
+          <div class="home-eyebrow"><span class="dot"></span> <span data-i18n="home.eyebrow">Developer Portal</span></div>
+          <h1 data-i18n="home.title">Topcon Suite<br><span class="accent">API Documentation</span></h1>
+          <p class="home-subtitle" data-i18n="home.subtitle">Complete API reference and integration guides for all Topcon Suite products. Choose a project below to explore the endpoints, or visit the guides for authentication and integration flows.</p>
+        </div>
+
+        <h2 style="font-size:var(--text-sm);font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--color-text-faint);margin-bottom:var(--space-4);" data-i18n="home.projectsLabel">Projects</h2>
+
+        <div class="home-grid">
+
+          <!-- CRM Card -->
+          <div class="project-card project-card-crm" onclick="showView('ref'); loadSpec('crm')">
+            <div class="project-card-badge" data-i18n="home.crmBadge">CRM</div>
+            <h3>TopconCRM</h3>
+            <p data-i18n="home.crmDesc">CRM and commercial management API. Manage proposals, contracts, scheduling, visits, leads, and opportunities.</p>
+            <div class="project-card-meta">
+              <span>🔑 X-Api-Token</span>
+            </div>
+            <div class="project-card-arrow">
+              <span data-i18n="home.explore">Explore API</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            </div>
+          </div>
+
+          <!-- TECH Card -->
+          <div class="project-card project-card-tech" onclick="showView('ref'); loadSpec('tech')">
+            <div class="project-card-badge" data-i18n="home.techBadge">Core</div>
+            <h3>TopconTECH</h3>
+            <p data-i18n="home.techDesc">Concrete technology integration API. Manage supplies, suppliers, batching plants, recipes, and material data.</p>
+            <div class="project-card-meta">
+              <span>🔑 Ocp-Apim-Subscription-Key</span>
+            </div>
+            <div class="project-card-arrow">
+              <span data-i18n="home.explore">Explore API</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            </div>
+          </div>
+
+          <!-- DISPATCH Card -->
+          <div class="project-card project-card-dispatch" onclick="showView('ref'); loadSpec('dispatch')">
+            <div class="project-card-badge" data-i18n="home.dispatchBadge">Operations</div>
+            <h3>TopconDispatch</h3>
+            <p data-i18n="home.dispatchDesc">Dispatch and logistics integration API. Synchronize scheduling, deliveries, load tickets, vehicles, contracts, and fiscal artifacts.</p>
+            <div class="project-card-meta">
+              <span>🔑 Ocp-Apim-Subscription-Key</span>
+            </div>
+            <div class="project-card-arrow">
+              <span data-i18n="home.explore">Explore API</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- ── GUIDE: AUTHENTICATION ── -->
+    <div class="view" id="view-guide-auth">
+      <div class="guide">
+        <h1 data-i18n="auth.title">Authentication</h1>
+        <p class="subtitle" data-i18n="auth.subtitle">Each Topcon Suite project uses a different authentication mechanism. Refer to the details below for the project you are integrating with.</p>
+
+        <div class="auth-cards">
+          <div class="auth-card auth-card-crm">
+            <div class="auth-card-name">TopconCRM</div>
+            <div class="auth-card-header">X-Api-Token</div>
+            <p class="auth-card-desc" data-i18n="auth.crmDesc">Pass your API token in the <code>Authorization</code> header as <code>Bearer {your_api_key}</code>. Tokens are issued by your system administrator.</p>
+          </div>
+          <div class="auth-card auth-card-tech">
+            <div class="auth-card-name">TopconTECH</div>
+            <div class="auth-card-header">Ocp-Apim-Subscription-Key</div>
+            <p class="auth-card-desc" data-i18n="auth.techDesc">Pass the <code>Ocp-Apim-Subscription-Key</code> header with your subscription key on every request.</p>
+          </div>
+          <div class="auth-card auth-card-dispatch">
+            <div class="auth-card-name">TopconDispatch</div>
+            <div class="auth-card-header">Ocp-Apim-Subscription-Key</div>
+            <p class="auth-card-desc" data-i18n="auth.dispatchDesc">Pass the <code>Ocp-Apim-Subscription-Key</code> header with your subscription key on every request.</p>
+          </div>
+        </div>
+
+        <hr>
+
+        <h2 data-i18n="auth.crmTitle">TopconCRM — API Key Authentication</h2>
+        <p data-i18n="auth.crmDetail">TopconCRM uses a simple API key passed in the <code>Authorization</code> header.</p>
+
+        <div class="code-block">
+          <div class="code-block-header"><span class="code-block-lang">HTTP</span><button class="code-block-copy" onclick="copyCode(this)">Copy</button></div>
+          <pre><code>GET /api/your-endpoint HTTP/1.1
+Host: your-topcon-crm-server.com
+Authorization: Bearer YOUR_API_TOKEN
+Content-Type: application/json</code></pre>
+        </div>
+
+        <div class="callout callout-warning">
+          <span class="callout-icon">⚠️</span>
+          <div class="callout-body" data-i18n="auth.crmWarning"><strong>Keep your API token secret.</strong> Never expose it in client-side code. Store it securely in environment variables or a secrets vault.</div>
+        </div>
+
+        <hr>
+
+        <h2 data-i18n="auth.techTitle">TopconTECH — Subscription Key</h2>
+        <p data-i18n="auth.techDetail">TopconTECH authenticates all requests via the <code>Ocp-Apim-Subscription-Key</code> header. Pass your subscription key on every request.</p>
+
+        <div class="code-block">
+          <div class="code-block-header"><span class="code-block-lang">HTTP</span><button class="code-block-copy" onclick="copyCode(this)">Copy</button></div>
+          <pre><code>GET /tech-hml/your-endpoint HTTP/1.1
+Host: api.topconsuite.io
+Ocp-Apim-Subscription-Key: YOUR_SUBSCRIPTION_KEY
+Content-Type: application/json</code></pre>
+        </div>
+
+        <hr>
+
+        <h2 data-i18n="auth.dispatchTitle">TopconDispatch — Subscription Key</h2>
+        <p data-i18n="auth.dispatchDetail">TopconDispatch authenticates all requests via the <code>Ocp-Apim-Subscription-Key</code> header. Pass your subscription key on every request.</p>
+
+        <div class="code-block">
+          <div class="code-block-header"><span class="code-block-lang">HTTP</span><button class="code-block-copy" onclick="copyCode(this)">Copy</button></div>
+          <pre><code>GET /dispatch/integrations/your-endpoint HTTP/1.1
+Host: api.topconsuite.io
+Ocp-Apim-Subscription-Key: YOUR_SUBSCRIPTION_KEY
+Content-Type: application/json</code></pre>
+        </div>
+
+        <div class="callout callout-info">
+          <span class="callout-icon">ℹ️</span>
+          <div class="callout-body" data-i18n="auth.dispatchNote"><strong>The subscription key header is required</strong> on every request to the Dispatch API. Missing it will result in a 401 response.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── GUIDE: INTEGRATION FLOWS ── -->
+    <div class="view" id="view-guide-flows">
+      <div class="guide">
+        <h1 data-i18n="flows.title">Integration Flows</h1>
+        <p class="subtitle" data-i18n="flows.subtitle">Visual diagrams showing how data flows between ERP systems, Topcon Suite products, plant automation, and external services. Click any diagram to expand it.</p>
+
+        <h2 data-i18n="flows.dispatchMappingTitle">TopconDISPATCH — ERP Integration Mapping</h2>
+        <p data-i18n="flows.dispatchMappingDesc">Shows the complete data synchronization map between ERP, TopconDISPATCH, automation systems, and GPS trackers.</p>
+
+        <div class="flow-grid">
+          <div class="flow-item" onclick="expandImage('flows/flow-1.png')">
+            <div class="flow-item-header">
+              <span class="flow-item-title" data-i18n="flows.flow1">TopconDISPATCH — ERP Mapping (Passive APIs)</span>
+              <span class="flow-item-expand" data-i18n="flows.clickExpand">Click to expand ↗</span>
+            </div>
+            <div class="flow-item-img"><img src="flows/flow-1.png" alt="TopconDISPATCH ERP mapping" loading="lazy"></div>
+          </div>
+
+          <div class="flow-item" onclick="expandImage('flows/flow-7.png')">
+            <div class="flow-item-header">
+              <span class="flow-item-title" data-i18n="flows.flow7">TopconDISPATCH — Full Integration (TECH + Dispatch + Tracker)</span>
+              <span class="flow-item-expand" data-i18n="flows.clickExpand">Click to expand ↗</span>
+            </div>
+            <div class="flow-item-img"><img src="flows/flow-7.png" alt="TopconDISPATCH full integration" loading="lazy"></div>
+          </div>
+        </div>
+
+        <h2 data-i18n="flows.techMappingTitle">TopconTECH — ERP Integration Mapping</h2>
+        <p data-i18n="flows.techMappingDesc">Shows how core resources (plants, suppliers, supplies, recipes) flow between ERP and TopconTECH.</p>
+
+        <div class="flow-grid">
+          <div class="flow-item" onclick="expandImage('flows/flow-2.png')">
+            <div class="flow-item-header">
+              <span class="flow-item-title" data-i18n="flows.flow2">TopconTECH — ERP Integration</span>
+              <span class="flow-item-expand" data-i18n="flows.clickExpand">Click to expand ↗</span>
+            </div>
+            <div class="flow-item-img"><img src="flows/flow-2.png" alt="TopconTECH ERP integration" loading="lazy"></div>
+          </div>
+        </div>
+
+        <h2 data-i18n="flows.combinedTitle">Combined Flows (TECH / CRM / DISPATCH)</h2>
+        <p data-i18n="flows.combinedDesc">Full integration flows showing how all Topcon Suite products work together with ERP, automation, and external systems.</p>
+
+        <div class="flow-grid">
+          <div class="flow-item" onclick="expandImage('flows/flow-3.png')">
+            <div class="flow-item-header">
+              <span class="flow-item-title" data-i18n="flows.flow3">TECH/CRM/DISPATCH (New) — Full Flow</span>
+              <span class="flow-item-expand" data-i18n="flows.clickExpand">Click to expand ↗</span>
+            </div>
+            <div class="flow-item-img"><img src="flows/flow-3.png" alt="Combined flow new" loading="lazy"></div>
+          </div>
+
+          <div class="flow-item" onclick="expandImage('flows/flow-4.png')">
+            <div class="flow-item-header">
+              <span class="flow-item-title" data-i18n="flows.flow4">TECH/CRM/DISPATCH/BILLING — SAP Integration</span>
+              <span class="flow-item-expand" data-i18n="flows.clickExpand">Click to expand ↗</span>
+            </div>
+            <div class="flow-item-img"><img src="flows/flow-4.png" alt="SAP integration flow" loading="lazy"></div>
+          </div>
+
+          <div class="flow-item" onclick="expandImage('flows/flow-5.png')">
+            <div class="flow-item-header">
+              <span class="flow-item-title" data-i18n="flows.flow5">TECH/CRM/DISPATCH Desktop — Integration Mapping</span>
+              <span class="flow-item-expand" data-i18n="flows.clickExpand">Click to expand ↗</span>
+            </div>
+            <div class="flow-item-img"><img src="flows/flow-5.png" alt="Desktop integration flow" loading="lazy"></div>
+          </div>
+
+          <div class="flow-item" onclick="expandImage('flows/flow-6.png')">
+            <div class="flow-item-header">
+              <span class="flow-item-title" data-i18n="flows.flow6">TECH/CRM/DISPATCH/BILLING Desktop — Full Flow</span>
+              <span class="flow-item-expand" data-i18n="flows.clickExpand">Click to expand ↗</span>
+            </div>
+            <div class="flow-item-img"><img src="flows/flow-6.png" alt="Full desktop flow" loading="lazy"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── REFERENCE VIEW (Redoc) ── -->
+    <div class="view" id="view-ref">
+      <div class="redoc-view">
+        <div class="redoc-toolbar">
+          <span class="redoc-toolbar-label" data-i18n="ref.project">Project</span>
+          <div class="redoc-selector">
+            <button class="redoc-btn" id="btn-crm" onclick="loadSpec('crm')">TopconCRM</button>
+            <button class="redoc-btn" id="btn-tech" onclick="loadSpec('tech')">TopconTECH</button>
+            <button class="redoc-btn" id="btn-dispatch" onclick="loadSpec('dispatch')">TopconDispatch</button>
+          </div>
+        </div>
+        <div id="redoc-loading">
+          <div class="spinner"></div>
+          <span data-i18n="ref.loading">Loading API reference...</span>
+        </div>
+        <div id="redoc-container"></div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+// i18n
+// ══════════════════════════════════════════════════════════════
+const T = {
+  en: {
+    'brand.sub': 'API Docs',
+    'nav.overview': 'Overview', 'nav.home': 'Home', 'nav.guides': 'Guides',
+    'nav.auth': 'Authentication', 'nav.flows': 'Integration Flows',
+    'nav.reference': 'API Reference',
+    'nav.crm': 'TopconCRM', 'nav.tech': 'TopconTECH', 'nav.dispatch': 'TopconDispatch',
+    'home.eyebrow': 'Developer Portal',
+    'home.title': 'Topcon Suite<br><span class="accent">API Documentation</span>',
+    'home.subtitle': 'Complete API reference and integration guides for all Topcon Suite products. Choose a project below to explore the endpoints, or visit the guides for authentication and integration flows.',
+    'home.projectsLabel': 'Projects',
+    'home.crmBadge': 'CRM', 'home.techBadge': 'Core', 'home.dispatchBadge': 'Operations',
+    'home.crmDesc': 'CRM and commercial management API. Manage proposals, contracts, scheduling, visits, leads, and opportunities.',
+    'home.techDesc': 'Concrete technology integration API. Manage supplies, suppliers, batching plants, recipes, and material data.',
+    'home.dispatchDesc': 'Dispatch and logistics integration API. Synchronize scheduling, deliveries, load tickets, vehicles, contracts, and fiscal artifacts.',
+    'home.explore': 'Explore API',
+    'auth.title': 'Authentication',
+    'auth.subtitle': 'Each Topcon Suite project uses a different authentication mechanism. Refer to the details below for the project you are integrating with.',
+    'auth.crmDesc': 'Pass your API token in the <code>Authorization</code> header as <code>Bearer {your_api_key}</code>. Tokens are issued by your system administrator.',
+    'auth.techDesc': 'Pass the <code>Ocp-Apim-Subscription-Key</code> header with your subscription key on every request.',
+    'auth.dispatchDesc': 'Pass the <code>Ocp-Apim-Subscription-Key</code> header with your subscription key on every request.',
+    'auth.crmTitle': 'TopconCRM — API Key Authentication',
+    'auth.crmDetail': 'TopconCRM uses a simple API key passed in the <code>Authorization</code> header.',
+    'auth.crmWarning': '<strong>Keep your API token secret.</strong> Never expose it in client-side code. Store it securely in environment variables or a secrets vault.',
+    'auth.techTitle': 'TopconTECH — Subscription Key',
+    'auth.techDetail': 'TopconTECH authenticates all requests via the <code>Ocp-Apim-Subscription-Key</code> header. Pass your subscription key on every request.',
+    'auth.dispatchTitle': 'TopconDispatch — Subscription Key',
+    'auth.dispatchDetail': 'TopconDispatch authenticates all requests via the <code>Ocp-Apim-Subscription-Key</code> header. Pass your subscription key on every request.',
+    'auth.dispatchNote': '<strong>The subscription key header is required</strong> on every request to the Dispatch API. Missing it will result in a 401 response.',
+    'flows.title': 'Integration Flows',
+    'flows.subtitle': 'Visual diagrams showing how data flows between ERP systems, Topcon Suite products, plant automation, and external services. Click any diagram to expand it.',
+    'flows.dispatchMappingTitle': 'TopconDISPATCH — ERP Integration Mapping',
+    'flows.dispatchMappingDesc': 'Shows the complete data synchronization map between ERP, TopconDISPATCH, automation systems, and GPS trackers.',
+    'flows.techMappingTitle': 'TopconTECH — ERP Integration Mapping',
+    'flows.techMappingDesc': 'Shows how core resources (plants, suppliers, supplies, recipes) flow between ERP and TopconTECH.',
+    'flows.combinedTitle': 'Combined Flows (TECH / CRM / DISPATCH)',
+    'flows.combinedDesc': 'Full integration flows showing how all Topcon Suite products work together with ERP, automation, and external systems.',
+    'flows.flow1': 'TopconDISPATCH — ERP Mapping (Passive APIs)',
+    'flows.flow2': 'TopconTECH — ERP Integration',
+    'flows.flow3': 'TECH/CRM/DISPATCH (New) — Full Flow',
+    'flows.flow4': 'TECH/CRM/DISPATCH/BILLING — SAP Integration',
+    'flows.flow5': 'TECH/CRM/DISPATCH Desktop — Integration Mapping',
+    'flows.flow6': 'TECH/CRM/DISPATCH/BILLING Desktop — Full Flow',
+    'flows.flow7': 'TopconDISPATCH — Full Integration (TECH + Dispatch + Tracker)',
+    'flows.clickExpand': 'Click to expand ↗',
+    'ref.project': 'Project', 'ref.loading': 'Loading API reference...',
+  },
+  ptbr: {
+    'brand.sub': 'Documentação de APIs',
+    'nav.overview': 'Visão Geral', 'nav.home': 'Início', 'nav.guides': 'Guias',
+    'nav.auth': 'Autenticação', 'nav.flows': 'Fluxos de Integração',
+    'nav.reference': 'Referência de API',
+    'nav.crm': 'TopconCRM', 'nav.tech': 'TopconTECH', 'nav.dispatch': 'TopconDispatch',
+    'home.eyebrow': 'Portal do Desenvolvedor',
+    'home.title': 'Topcon Suite<br><span class="accent">Documentação de APIs</span>',
+    'home.subtitle': 'Referência completa e guias de integração para todos os produtos Topcon Suite. Escolha um projeto abaixo para explorar os endpoints, ou visite os guias de autenticação e fluxos de integração.',
+    'home.projectsLabel': 'Projetos',
+    'home.crmBadge': 'CRM', 'home.techBadge': 'Principal', 'home.dispatchBadge': 'Operações',
+    'home.crmDesc': 'API de CRM e gestão comercial. Gerencie propostas, contratos, programações, visitas, leads e oportunidades.',
+    'home.techDesc': 'API de integração de tecnologia do concreto. Gerencie insumos, fornecedores, centrais, traços e dados de materiais.',
+    'home.dispatchDesc': 'API de integração de despacho e logística. Sincronize programações, entregas, tickets de carregamento, veículos, contratos e artefatos fiscais.',
+    'home.explore': 'Explorar API',
+    'auth.title': 'Autenticação',
+    'auth.subtitle': 'Cada projeto do Topcon Suite usa um mecanismo de autenticação diferente. Consulte os detalhes abaixo para o projeto com o qual você está integrando.',
+    'auth.crmDesc': 'Passe seu token de API no header <code>Authorization</code> como <code>Bearer {seu_token}</code>. Tokens são emitidos pelo administrador do sistema.',
+    'auth.techDesc': 'Passe o header <code>Ocp-Apim-Subscription-Key</code> com sua chave de assinatura em toda requisição.',
+    'auth.dispatchDesc': 'Passe o header <code>Ocp-Apim-Subscription-Key</code> com sua chave de assinatura em toda requisição.',
+    'auth.crmTitle': 'TopconCRM — Autenticação por API Key',
+    'auth.crmDetail': 'O TopconCRM usa uma API key simples passada no header <code>Authorization</code>.',
+    'auth.crmWarning': '<strong>Mantenha seu token de API em segredo.</strong> Nunca o exponha em código client-side. Armazene-o com segurança em variáveis de ambiente ou um cofre de segredos.',
+    'auth.techTitle': 'TopconTECH — Subscription Key',
+    'auth.techDetail': 'O TopconTECH autentica todas as requisições via header <code>Ocp-Apim-Subscription-Key</code>. Passe sua chave de assinatura em toda requisição.',
+    'auth.dispatchTitle': 'TopconDispatch — Subscription Key',
+    'auth.dispatchDetail': 'O TopconDispatch autentica todas as requisições via header <code>Ocp-Apim-Subscription-Key</code>. Passe sua chave de assinatura em toda requisição.',
+    'auth.dispatchNote': '<strong>O header da chave de assinatura é obrigatório</strong> em toda requisição para a API do Dispatch. A ausência resultará em resposta 401.',
+    'flows.title': 'Fluxos de Integração',
+    'flows.subtitle': 'Diagramas visuais mostrando como os dados fluem entre sistemas ERP, produtos Topcon Suite, automação de centrais e serviços externos. Clique em qualquer diagrama para expandir.',
+    'flows.dispatchMappingTitle': 'TopconDISPATCH — Mapeamento de Integração ERP',
+    'flows.dispatchMappingDesc': 'Mostra o mapa completo de sincronização de dados entre ERP, TopconDISPATCH, sistemas de automação e rastreadores GPS.',
+    'flows.techMappingTitle': 'TopconTECH — Mapeamento de Integração ERP',
+    'flows.techMappingDesc': 'Mostra como recursos principais (centrais, fornecedores, insumos, traços) fluem entre ERP e TopconTECH.',
+    'flows.combinedTitle': 'Fluxos Combinados (TECH / CRM / DISPATCH)',
+    'flows.combinedDesc': 'Fluxos de integração completos mostrando como todos os produtos Topcon Suite trabalham juntos com ERP, automação e sistemas externos.',
+    'flows.flow1': 'TopconDISPATCH — Mapeamento ERP (APIs Passivas)',
+    'flows.flow2': 'TopconTECH — Integração ERP',
+    'flows.flow3': 'TECH/CRM/DISPATCH (Novo) — Fluxo Completo',
+    'flows.flow4': 'TECH/CRM/DISPATCH/BILLING — Integração SAP',
+    'flows.flow5': 'TECH/CRM/DISPATCH Desktop — Mapeamento de Integração',
+    'flows.flow6': 'TECH/CRM/DISPATCH/BILLING Desktop — Fluxo Completo',
+    'flows.flow7': 'TopconDISPATCH — Integração Completa (TECH + Dispatch + Rastreador)',
+    'flows.clickExpand': 'Clique para expandir ↗',
+    'ref.project': 'Projeto', 'ref.loading': 'Carregando referência de API...',
+  }
+};
+
+let currentLang = 'en';
+
+function setLang(lang) {
+  currentLang = lang;
+  document.querySelectorAll('.pill-btn[data-lang]').forEach(b => b.classList.toggle('active', b.dataset.lang === lang));
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.dataset.i18n;
+    const txt = T[lang]?.[key];
+    if (txt) el.innerHTML = txt;
+  });
+  if (document.getElementById('view-ref').classList.contains('active') && currentSpec) {
+    loadSpec(currentSpec);
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// VIEWS
+// ══════════════════════════════════════════════════════════════
+function showView(viewId) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+
+  const view = document.getElementById('view-' + viewId);
+  if (view) view.classList.add('active');
+
+  const navItem = document.querySelector('[data-view="' + viewId + '"]') ||
+                  document.querySelector('[data-view^="ref"]');
+  if (navItem) navItem.classList.add('active');
+
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('main-content').scrollTop = 0;
+}
+
+// ══════════════════════════════════════════════════════════════
+// REDOC — load specs from files
+// ══════════════════════════════════════════════════════════════
+let currentSpec = null;
+const specFiles = {
+  crm:      { en: 'crm-swagger-en.json',        ptbr: 'crm-swagger-pt-BR.json' },
+  tech:     { en: 'tech-swagger-en.yaml',        ptbr: 'tech-swagger-pt-BR.yaml' },
+  dispatch: { en: 'dispatch-swagger-en.yaml',    ptbr: 'dispatch-swagger-pt-BR.yaml' }
+};
+
+const redocTheme = () => {
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  return {
+    colors: {
+      primary: { main: isDark ? '#4a9eed' : '#003563' },
+      text: { primary: isDark ? '#e2e8f0' : '#0f172a' },
+      http: {
+        get: isDark ? '#10b981' : '#059669',
+        post: isDark ? '#3b82f6' : '#2563eb',
+        put: isDark ? '#f59e0b' : '#d97706',
+        delete: isDark ? '#ef4444' : '#dc2626',
+        patch: isDark ? '#8b5cf6' : '#7c3aed',
+      }
+    },
+    schema: {
+      nestedBackground: isDark ? '#0b1c33' : '#f8fafc',
+    },
+    typography: {
+      fontFamily: '"Plus Jakarta Sans", system-ui, sans-serif',
+      headings: { fontFamily: '"Plus Jakarta Sans", system-ui, sans-serif', fontWeight: '700' },
+      code: {
+        fontFamily: '"JetBrains Mono", "Fira Code", monospace',
+        fontSize: '13px',
+        backgroundColor: isDark ? '#112640' : '#f1f5f9',
+        color: isDark ? '#e2e8f0' : '#0f172a',
+      },
+    },
+    sidebar: {
+      width: '240px',
+      backgroundColor: isDark ? '#061527' : '#ffffff',
+      textColor: isDark ? '#94a3b8' : '#475569',
+      activeTextColor: isDark ? '#4a9eed' : '#003563',
+      groupItems: { textTransform: 'uppercase' },
+    },
+    rightPanel: {
+      backgroundColor: isDark ? '#061527' : '#0b1c33',
+      textColor: '#e2e8f0',
+    },
+  };
+};
+
+async function loadSpec(project) {
+  currentSpec = project;
+
+  // Update toolbar buttons
+  document.querySelectorAll('.redoc-btn').forEach(b => b.classList.remove('active'));
+  const btn = document.getElementById('btn-' + project);
+  if (btn) btn.classList.add('active');
+
+  // Update sidebar active
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const navBtn = document.querySelector('[data-view="ref-' + project + '"]');
+  if (navBtn) navBtn.classList.add('active');
+
+  const loading = document.getElementById('redoc-loading');
+  const container = document.getElementById('redoc-container');
+  container.innerHTML = '';
+  loading.style.display = 'flex';
+
+  const file = specFiles[project]?.[currentLang] || specFiles[project]?.['en'];
+  if (!file) { loading.innerHTML = '<span>Spec not found</span>'; return; }
+
+  try {
+    const resp = await fetch(file);
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+
+    let spec;
+    if (file.endsWith('.json')) {
+      spec = await resp.json();
+    } else {
+      const text = await resp.text();
+      if (typeof jsyaml !== 'undefined') {
+        spec = jsyaml.load(text);
+      } else {
+        // Fallback: wait for js-yaml
+        await new Promise(r => { const i = setInterval(() => { if (typeof jsyaml !== 'undefined') { clearInterval(i); r(); } }, 200); });
+        spec = jsyaml.load(text);
+      }
+    }
+
+    const tryInit = () => {
+      if (typeof Redoc === 'undefined') { setTimeout(tryInit, 200); return; }
+      loading.style.display = 'none';
+      Redoc.init(spec, {
+        theme: redocTheme(),
+        scrollYOffset: 0,
+        hideDownloadButton: false,
+        expandResponses: '200',
+        requiredPropsFirst: true,
+        sortPropsAlphabetically: false,
+        pathInMiddlePanel: true,
+        nativeScrollbars: true,
+        noAutoAuth: true,
+      }, container);
+    };
+    setTimeout(tryInit, 100);
+  } catch (err) {
+    loading.innerHTML = '<span style="color:var(--color-error)">Failed to load spec: ' + err.message + '<br><br>Make sure you are serving this file via an HTTP server (not file://).<br><code>npx serve .</code> or <code>python -m http.server</code></span>';
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// DARK / LIGHT THEME
+// ══════════════════════════════════════════════════════════════
+(function() {
+  const html = document.documentElement;
+  const toggle = document.getElementById('theme-toggle');
+  const sunSvg = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>';
+  const moonSvg = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
+
+  function applyTheme(t) {
+    html.setAttribute('data-theme', t);
+    toggle.innerHTML = t === 'dark' ? sunSvg : moonSvg;
+  }
+
+  const stored = localStorage.getItem('topcon-theme');
+  applyTheme(stored || 'dark');
+
+  toggle.addEventListener('click', () => {
+    const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    localStorage.setItem('topcon-theme', next);
+    applyTheme(next);
+    // Reload redoc if visible for proper theming
+    if (document.getElementById('view-ref').classList.contains('active') && currentSpec) {
+      loadSpec(currentSpec);
+    }
+  });
+})();
+
+// ══════════════════════════════════════════════════════════════
+// MOBILE MENU
+// ══════════════════════════════════════════════════════════════
+document.getElementById('mobile-menu-btn').addEventListener('click', () => {
+  document.getElementById('sidebar').classList.toggle('open');
+});
+
+// ══════════════════════════════════════════════════════════════
+// COPY CODE
+// ══════════════════════════════════════════════════════════════
+function copyCode(btn) {
+  const code = btn.closest('.code-block').querySelector('code').textContent;
+  navigator.clipboard.writeText(code).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = '✓ Copied';
+    setTimeout(() => btn.textContent = orig, 1500);
+  });
+}
+
+// ══════════════════════════════════════════════════════════════
+// EXPAND IMAGE MODAL
+// ══════════════════════════════════════════════════════════════
+function expandImage(src) {
+  const modal = document.getElementById('img-modal');
+  document.getElementById('img-modal-src').src = src;
+  modal.classList.add('active');
+}
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') document.getElementById('img-modal').classList.remove('active');
+});
+</script>
+</body>
+</html>
